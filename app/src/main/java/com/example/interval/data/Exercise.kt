@@ -1,0 +1,47 @@
+package com.example.interval.data
+
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import java.util.UUID
+
+@Entity(
+    tableName = "exercises",
+    foreignKeys = [ForeignKey(
+        entity = Workout::class,
+        parentColumns = ["id"],
+        childColumns = ["workoutId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("workoutId")]
+)
+data class Exercise(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val workoutId: String,
+    val name: String,
+    val durationSeconds: Int,
+    val sets: Int,
+    val restSeconds: Int,
+    val sortOrder: Int
+)
+
+data class WorkoutExerciseCount(
+    @ColumnInfo(name = "workoutId") val workoutId: String,
+    @ColumnInfo(name = "count") val count: Int
+)
+
+val EXERCISE_PRESET_NAMES = listOf(
+    "腕立て伏せ", "スクワット", "腹筋", "プランク", "ランジ",
+    "バーピー", "マウンテンクライマー", "ジャンピングジャック", "その他（カスタム）"
+)
+
+const val DURATION_MIN = 5
+const val DURATION_MAX = 300
+const val DURATION_STEP = 5
+const val SETS_MIN = 1
+const val SETS_MAX = 20
+const val REST_MIN = 0
+const val REST_MAX = 120
+const val REST_STEP = 5

@@ -1,0 +1,51 @@
+package com.example.interval.data
+
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class WorkoutRepository(private val db: AppDatabase) {
+    val workouts: Flow<List<Workout>> = db.workoutDao().getAll()
+
+    val workoutsWithCount: Flow<List<WorkoutWithCount>> = db.workoutDao().getAllWithCount()
+
+    val allExerciseCounts: Flow<Map<String, Int>> = db.exerciseDao().getAllCounts()
+        .map { list -> list.associate { it.workoutId to it.count } }
+
+    fun exercises(workoutId: String): Flow<List<Exercise>> =
+        db.exerciseDao().getByWorkout(workoutId)
+
+    fun exerciseCount(workoutId: String): Flow<Int> =
+        db.exerciseDao().countByWorkout(workoutId)
+
+    suspend fun addWorkout(name: String): Workout {
+        val count = db.workoutDao().count()
+        val workout = Workout(name = name, sortOrder = count)
+        db.workoutDao().insert(workout)
+        return workout
+    }
+
+    suspend fun updateWorkout(workout: Workout) = db.workoutDao().update(workout)
+
+    suspend fun deleteWorkout(workout: Workout) = db.workoutDao().delete(workout)
+
+    suspend fun addExercise(workoutId: String, name: String, durationSeconds: Int, sets: Int, restSeconds: Int): Exercise {
+        val existing = db.exerciseDao().getByWorkoutOnce(workoutId)
+        val exercise = Exercise(
+            workoutId = workoutId,
+            name = name,
+            durationSeconds = durationSeconds,
+            sets = sets,
+            restSeconds = restSeconds,
+            sortOrder = existing.size
+        )
+        db.exerciseDao().insert(exercise)
+        return exercise
+    }
+
+    suspend fun updateExercise(exercise: Exercise) = db.exerciseDao().update(exercise)
+
+    suspend fun deleteExercise(exercise: Exercise) = db.exerciseDao().delete(exercise)
+
+    suspend fun getExercisesOnce(workoutId: String): List<Exercise> =
+        db.exerciseDao().getByWorkoutOnce(workoutId)
+}
