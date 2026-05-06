@@ -14,7 +14,8 @@ object Routes {
     const val WORKOUT_DETAIL = "workout_detail/{workoutId}"
     const val EXERCISE_EDIT = "exercise_edit/{workoutId}?exerciseId={exerciseId}"
     const val TIMER = "timer/{workoutId}"
-    const val COMPLETION = "completion"
+    const val COMPLETION = "completion/{totalSeconds}"
+    const val HISTORY = "history"
 
     fun workoutEdit(workoutId: String? = null) =
         if (workoutId != null) "workout_edit?workoutId=$workoutId" else "workout_edit"
@@ -23,6 +24,7 @@ object Routes {
         if (exerciseId != null) "exercise_edit/$workoutId?exerciseId=$exerciseId"
         else "exercise_edit/$workoutId"
     fun timer(workoutId: String) = "timer/$workoutId"
+    fun completion(totalSeconds: Int) = "completion/$totalSeconds"
 }
 
 @Composable
@@ -33,7 +35,8 @@ fun AppNavigation() {
         composable(Routes.WORKOUT_SELECT) {
             WorkoutSelectScreen(
                 onWorkoutClick = { navController.navigate(Routes.workoutDetail(it)) },
-                onAddWorkout = { navController.navigate(Routes.workoutEdit()) }
+                onAddWorkout = { navController.navigate(Routes.workoutEdit()) },
+                onHistory = { navController.navigate(Routes.HISTORY) }
             )
         }
         composable(
@@ -82,8 +85,8 @@ fun AppNavigation() {
         ) { back ->
             TimerScreen(
                 workoutId = back.arguments!!.getString("workoutId")!!,
-                onComplete = {
-                    navController.navigate(Routes.COMPLETION) {
+                onComplete = { totalSeconds ->
+                    navController.navigate(Routes.completion(totalSeconds)) {
                         popUpTo(Routes.WORKOUT_SELECT)
                     }
                 },
@@ -94,14 +97,21 @@ fun AppNavigation() {
                 }
             )
         }
-        composable(Routes.COMPLETION) {
+        composable(
+            route = "completion/{totalSeconds}",
+            arguments = listOf(navArgument("totalSeconds") { type = NavType.IntType })
+        ) { back ->
             CompletionScreen(
+                totalSeconds = back.arguments!!.getInt("totalSeconds"),
                 onDone = {
                     navController.navigate(Routes.WORKOUT_SELECT) {
                         popUpTo(Routes.WORKOUT_SELECT) { inclusive = true }
                     }
                 }
             )
+        }
+        composable(Routes.HISTORY) {
+            HistoryScreen()
         }
     }
 }

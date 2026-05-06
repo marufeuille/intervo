@@ -56,6 +56,7 @@ class WorkoutSelectViewModel(app: Application) : AndroidViewModel(app) {
 fun WorkoutSelectScreen(
     onWorkoutClick: (String) -> Unit,
     onAddWorkout: () -> Unit,
+    onHistory: () -> Unit,
     vm: WorkoutSelectViewModel = viewModel()
 ) {
     val workoutsWithCount by vm.workoutsWithCount.collectAsStateWithLifecycle()
@@ -111,6 +112,19 @@ fun WorkoutSelectScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
+            item {
+                Spacer(Modifier.height(4.dp))
+                Chip(
+                    label = {
+                        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                            Text("履歴", color = TextSecondary, fontSize = 13.sp)
+                        }
+                    },
+                    onClick = onHistory,
+                    colors = ChipDefaults.chipColors(backgroundColor = SurfaceDark),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

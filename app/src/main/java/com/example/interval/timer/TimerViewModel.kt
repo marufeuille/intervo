@@ -28,12 +28,25 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
     private var timerService: TimerService? = null
     private var pendingExercises: List<Exercise>? = null
+    private var pendingWorkoutName: String = ""
+
+    private var currentWorkoutId = ""
+    private var currentWorkoutName = ""
+    private var historySaved = false
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             timerService = (binder as TimerService.LocalBinder).getService()
             viewModelScope.launch {
-                timerService?.state?.collect { _state.value = it }
+                var prevPhase: TimerPhase = TimerPhase.Idle
+                timerService?.state?.collect { newState ->
+                    if (prevPhase !is TimerPhase.Complete && newState.phase is TimerPhase.Complete && !historySaved) {
+                        historySaved = true
+                        saveHistory(newState)
+                    }
+                    prevPhase = newState.phase
+                    _state.value = newState
+                }
             }
             pendingExercises?.let {
                 timerService?.start(it)
@@ -57,7 +70,11 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun start(workoutId: String) {
+        currentWorkoutId = workoutId
+        historySaved = false
         viewModelScope.launch {
+            val workout = repository.getWorkoutById(workoutId)
+            currentWorkoutName = workout?.name ?: ""
             val exercises = repository.getExercisesOnce(workoutId)
             if (exercises.isEmpty()) return@launch
             val svc = timerService
@@ -65,13 +82,26 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
                 svc.start(exercises)
             } else {
                 pendingExercises = exercises
+                pendingWorkoutName = currentWorkoutName
             }
         }
     }
 
     fun pause() { timerService?.pause() }
     fun resume() { timerService?.resume() }
+    fun skipRest() { timerService?.skipRest() }
     fun stop() { timerService?.stop() }
 
     fun setAmbient(ambient: Boolean) { _isAmbient.value = ambient }
+
+    private fun saveHistory(state: TimerState) {
+        viewModelScope.launch {
+            repository.addHistory(
+                workoutId = currentWorkoutId,
+                workoutName = currentWorkoutName,
+                totalSeconds = state.totalSeconds,
+                exerciseCount = state.exercises.size
+            )
+        }
+    }
 }

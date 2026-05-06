@@ -26,17 +26,20 @@ class TimerService : Service() {
 
     private var countdownJob: Job? = null
     private lateinit var vibrationManager: VibrationManager
+    private lateinit var speechManager: SpeechManager
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
         vibrationManager = VibrationManager(this)
+        speechManager = SpeechManager(this)
     }
 
     override fun onBind(intent: Intent): IBinder = binder
 
     override fun onDestroy() {
         super.onDestroy()
+        speechManager.shutdown()
         serviceScope.cancel()
     }
 
@@ -45,8 +48,10 @@ class TimerService : Service() {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock?.release()
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "interval:timer").also {
-            it.acquire(2 * 60 * 60 * 1000L) // 最大2時間
+            it.acquire(2 * 60 * 60 * 1000L)
         }
+        vibrationManager.vibrate(VibratePattern.WORKOUT_START)
+        speechManager.speak(exercises[0].name)
         _state.value = TimerState(
             exercises = exercises,
             phase = TimerPhase.ExercisePhase(
@@ -66,6 +71,15 @@ class TimerService : Service() {
     fun resume() {
         if (!_state.value.isPaused) return
         _state.value = _state.value.copy(isPaused = false)
+        startCountdown()
+    }
+
+    fun skipRest() {
+        val current = _state.value
+        val phase = current.phase as? TimerPhase.RestPhase ?: return
+        countdownJob?.cancel()
+        val unpaused = current.copy(isPaused = false)
+        advanceAfterRest(unpaused, phase.exerciseIndex, phase.completedSets)
         startCountdown()
     }
 
@@ -97,13 +111,17 @@ class TimerService : Service() {
         when (val phase = current.phase) {
             is TimerPhase.ExercisePhase -> {
                 if (phase.remainingSeconds > 1) {
-                    _state.value = current.copy(
-                        phase = phase.copy(remainingSeconds = phase.remainingSeconds - 1)
-                    )
+                    val next = phase.remainingSeconds - 1
+                    _state.value = current.copy(phase = phase.copy(remainingSeconds = next))
+                    if (next in 1..3) {
+                        vibrationManager.vibrate(VibratePattern.COUNTDOWN_TICK)
+                        speechManager.speak(next.toString())
+                    }
                 } else {
                     vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
                     val exercise = current.exercises[phase.exerciseIndex]
                     if (exercise.restSeconds > 0) {
+                        speechManager.speak("休憩")
                         _state.value = current.copy(
                             phase = TimerPhase.RestPhase(
                                 exerciseIndex = phase.exerciseIndex,
@@ -118,9 +136,12 @@ class TimerService : Service() {
             }
             is TimerPhase.RestPhase -> {
                 if (phase.remainingSeconds > 1) {
-                    _state.value = current.copy(
-                        phase = phase.copy(remainingSeconds = phase.remainingSeconds - 1)
-                    )
+                    val next = phase.remainingSeconds - 1
+                    _state.value = current.copy(phase = phase.copy(remainingSeconds = next))
+                    if (next in 1..3) {
+                        vibrationManager.vibrate(VibratePattern.COUNTDOWN_TICK)
+                        speechManager.speak(next.toString())
+                    }
                 } else {
                     vibrationManager.vibrate(VibratePattern.REST_DONE)
                     advanceAfterRest(current, phase.exerciseIndex, phase.completedSets)
@@ -134,6 +155,7 @@ class TimerService : Service() {
         val exercise = current.exercises[exerciseIndex]
         when {
             completedSets < exercise.sets -> {
+                speechManager.speak("始め")
                 _state.value = current.copy(
                     phase = TimerPhase.ExercisePhase(
                         exerciseIndex = exerciseIndex,
@@ -144,6 +166,7 @@ class TimerService : Service() {
             }
             exerciseIndex + 1 < current.exercises.size -> {
                 val next = current.exercises[exerciseIndex + 1]
+                speechManager.speak(next.name)
                 _state.value = current.copy(
                     phase = TimerPhase.ExercisePhase(
                         exerciseIndex = exerciseIndex + 1,
@@ -153,6 +176,8 @@ class TimerService : Service() {
                 )
             }
             else -> {
+                vibrationManager.vibrate(VibratePattern.WORKOUT_COMPLETE)
+                speechManager.speak("完了")
                 _state.value = current.copy(phase = TimerPhase.Complete)
                 releaseWakeLock()
                 stopSelf()

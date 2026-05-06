@@ -26,7 +26,7 @@ import dev.marufeuille.intervo.ui.theme.*
 @Composable
 fun TimerScreen(
     workoutId: String,
-    onComplete: () -> Unit,
+    onComplete: (totalSeconds: Int) -> Unit,
     onStop: () -> Unit,
     vm: TimerViewModel = viewModel()
 ) {
@@ -40,7 +40,7 @@ fun TimerScreen(
     }
 
     LaunchedEffect(state.phase) {
-        if (state.phase is TimerPhase.Complete) onComplete()
+        if (state.phase is TimerPhase.Complete) onComplete(state.totalSeconds)
     }
 
     DisposableEffect(Unit) {
@@ -58,7 +58,12 @@ fun TimerScreen(
     } else {
         ActiveTimerContent(
             state = state,
-            onTap = { if (state.isPaused) vm.resume() else vm.pause() },
+            onTap = {
+                when (state.phase) {
+                    is TimerPhase.RestPhase -> vm.skipRest()
+                    else -> if (state.isPaused) vm.resume() else vm.pause()
+                }
+            },
             onLongPress = { showStopDialog = true }
         )
     }
@@ -96,6 +101,7 @@ private fun ActiveTimerContent(
     onLongPress: () -> Unit
 ) {
     val phase = state.phase
+    val isRest = phase is TimerPhase.RestPhase
     val (remaining, exerciseName, phaseLabel, phaseColor, setInfo, totalSecs) = when (phase) {
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
@@ -123,6 +129,7 @@ private fun ActiveTimerContent(
     }
 
     val progress = if (totalSecs > 0) remaining.toFloat() / totalSecs else 0f
+    val nextExercise = state.nextExercise
 
     Box(
         modifier = Modifier
@@ -141,7 +148,7 @@ private fun ActiveTimerContent(
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(setInfo, fontSize = 12.sp, color = TextSecondary)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(exerciseName, fontSize = 13.sp, color = TextSecondary)
             Text(phaseLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = phaseColor, letterSpacing = 1.sp)
             Spacer(Modifier.height(2.dp))
@@ -154,6 +161,11 @@ private fun ActiveTimerContent(
                     lineHeight = 56.sp
                 )
                 Text(" 秒", fontSize = 14.sp, color = TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
+            }
+            if (isRest) {
+                Text("タップでスキップ", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
+            } else if (nextExercise != null) {
+                Text("次: ${nextExercise.name}", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
             }
         }
     }

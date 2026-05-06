@@ -29,6 +29,21 @@ data class TimerState(
             else -> null
         }
 
+    val nextExercise: Exercise?
+        get() {
+            return when (val p = phase) {
+                is TimerPhase.ExercisePhase -> {
+                    val ex = exercises.getOrNull(p.exerciseIndex) ?: return null
+                    if (p.currentSet >= ex.sets) exercises.getOrNull(p.exerciseIndex + 1) else null
+                }
+                is TimerPhase.RestPhase -> {
+                    val ex = exercises.getOrNull(p.exerciseIndex) ?: return null
+                    if (p.completedSets >= ex.sets) exercises.getOrNull(p.exerciseIndex + 1) else null
+                }
+                else -> null
+            }
+        }
+
     val totalSeconds: Int
         get() = exercises.sumOf { it.durationSeconds * it.sets + it.restSeconds * it.sets }
 }

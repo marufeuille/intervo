@@ -13,7 +13,11 @@ import dev.marufeuille.intervo.ui.theme.CompletionGreen
 import dev.marufeuille.intervo.ui.theme.TextSecondary
 
 @Composable
-fun CompletionScreen(onDone: () -> Unit) {
+fun CompletionScreen(totalSeconds: Int, onDone: () -> Unit) {
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    val timeLabel = if (minutes > 0) "${minutes}分 ${seconds}秒" else "${seconds}秒"
+
     Scaffold(timeText = { TimeText() }) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -21,11 +25,15 @@ fun CompletionScreen(onDone: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Text("✓", fontSize = 48.sp, color = CompletionGreen)
-            Spacer(Modifier.height(8.dp))
-            Text("完了！", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.height(4.dp))
+            Text("完了！", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Spacer(Modifier.height(2.dp))
             Text("お疲れ様でした", fontSize = 13.sp, color = TextSecondary)
-            Spacer(Modifier.height(20.dp))
+            if (totalSeconds > 0) {
+                Spacer(Modifier.height(4.dp))
+                Text(timeLabel, fontSize = 13.sp, color = CompletionGreen.copy(alpha = 0.8f))
+            }
+            Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onDone,
                 colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF1A3A1A)),

@@ -3,6 +3,7 @@ package dev.marufeuille.intervo.data
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+
 class WorkoutRepository(private val db: AppDatabase) {
     val workouts: Flow<List<Workout>> = db.workoutDao().getAll()
 
@@ -48,4 +49,24 @@ class WorkoutRepository(private val db: AppDatabase) {
 
     suspend fun getExercisesOnce(workoutId: String): List<Exercise> =
         db.exerciseDao().getByWorkoutOnce(workoutId)
+
+    suspend fun getWorkoutById(id: String): Workout? = db.workoutDao().getById(id)
+
+    val recentHistory: Flow<List<WorkoutHistory>> = db.workoutHistoryDao().getRecent()
+
+    suspend fun addHistory(
+        workoutId: String,
+        workoutName: String,
+        totalSeconds: Int,
+        exerciseCount: Int
+    ) {
+        db.workoutHistoryDao().insert(
+            WorkoutHistory(
+                workoutId = workoutId,
+                workoutName = workoutName,
+                totalSeconds = totalSeconds,
+                exerciseCount = exerciseCount
+            )
+        )
+    }
 }

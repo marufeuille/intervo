@@ -18,13 +18,25 @@ class VibrationManager(context: Context) {
         val v = vibrator ?: return
         if (!v.hasVibrator()) return
         val effect = when (pattern) {
+            VibratePattern.WORKOUT_START ->
+                VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 100), -1)
             VibratePattern.EXERCISE_DONE ->
                 VibrationEffect.createWaveform(longArrayOf(0, 200, 100, 200), -1)
             VibratePattern.REST_DONE ->
                 VibrationEffect.createWaveform(longArrayOf(0, 600), -1)
+            VibratePattern.COUNTDOWN_TICK ->
+                VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE)
+            VibratePattern.WORKOUT_COMPLETE ->
+                VibrationEffect.createWaveform(longArrayOf(0, 200, 100, 200, 100, 500), -1)
         }
         v.vibrate(effect)
     }
 }
 
-enum class VibratePattern { EXERCISE_DONE, REST_DONE }
+enum class VibratePattern {
+    WORKOUT_START,
+    EXERCISE_DONE,
+    REST_DONE,
+    COUNTDOWN_TICK,
+    WORKOUT_COMPLETE
+}
