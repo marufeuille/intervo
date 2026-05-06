@@ -2,19 +2,52 @@
 
 ## 必要なもの
 
-- Android Studio（最新版推奨）
 - Android SDK（compileSdk / targetSdk 36）
-- Wear OS エミュレータ または Pixel Watch 4 実機
+- Java 17 以上（`gradle.properties` で `org.gradle.java.home` を指定済み）
+- Pixel Watch 4 実機
 
-## デバッグビルド
+## パッケージ名
+
+| ビルド | パッケージ名 |
+|--------|-------------|
+| Debug（ADB）| `dev.marufeuille.intervo.debug` |
+| Release（Play ストア）| `dev.marufeuille.intervo` |
+
+Debug と Release は別アプリとしてウォッチに共存できる。
+
+---
+
+## デバッグビルド（ADB 経由）
+
+### ビルド
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-## リリースビルド
+### Wi-Fi ADB でインストール
 
-署名用の `keystore.properties` をプロジェクトルートに用意する（リポジトリ非管理）。
+1. ウォッチ側: 設定 → 一般 → 開発者向けオプション → ADB デバッグ ON → Wi-Fi 経由のデバッグ ON
+2. 表示されたIPアドレス:ポートで接続（初回はペアリングが必要）
+
+```bash
+adb connect <IPアドレス>:<ポート>
+adb -s <IPアドレス>:<ポート> install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+### 旧パッケージ（com.example.interval）を削除する場合
+
+```bash
+adb -s <IPアドレス>:<ポート> uninstall com.example.interval
+```
+
+---
+
+## リリースビルド（Play ストア）
+
+### 前提：`keystore.properties`
+
+プロジェクトルートに作成（git 管理外）：
 
 ```properties
 storeFile=/path/to/your.jks
@@ -23,31 +56,19 @@ keyAlias=xxxx
 keyPassword=xxxx
 ```
 
-```bash
-./gradlew assembleRelease
-```
-
-## エミュレータで実行
-
-AVD Manager で以下の構成を作成して起動：
-
-| 項目 | 値 |
-|------|-----|
-| API | android-36 |
-| System Image | android-wear-signed / arm64-v8a |
-
-Android Studio の Run ボタン、または：
+### AAB をビルド
 
 ```bash
-./gradlew installDebug
+./gradlew bundleRelease
+# → app/build/outputs/bundle/release/app-release.aab
 ```
 
-## 実機インストール（Pixel Watch 4 / Wi-Fi ADB）
+### バージョンを上げる場合
 
-```bash
-# Watch 側: 設定 → システム → 開発者向けオプション → ADBデバッグ ON
+`app/build.gradle.kts` の `versionCode` を +1 してから再ビルド。
 
-adb tcpip 5555
-adb connect <WatchのIPアドレス>:5555
-adb install app/build/outputs/apk/debug/app-debug.apk
-```
+### Play Console へのアップロード
+
+1. [play.google.com/console](https://play.google.com/console) を開く
+2. Intervo → テスト → 内部テスト → 新しいリリースを作成
+3. `app-release.aab` をアップロード → リリース

@@ -1,4 +1,4 @@
-package com.example.interval.ui.theme
+package dev.marufeuille.intervo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

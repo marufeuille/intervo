@@ -1,4 +1,4 @@
-package com.example.interval.ui.screens
+package dev.marufeuille.intervo.ui.screens
 
 import android.app.Application
 import androidx.compose.foundation.background
@@ -16,8 +16,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
-import com.example.interval.data.*
-import com.example.interval.ui.theme.*
+import dev.marufeuille.intervo.data.*
+import dev.marufeuille.intervo.ui.theme.*
 import kotlinx.coroutines.launch
 
 class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : AndroidViewModel(app) {

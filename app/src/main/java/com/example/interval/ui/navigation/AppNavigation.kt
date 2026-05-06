@@ -1,4 +1,4 @@
-package com.example.interval.ui.navigation
+package dev.marufeuille.intervo.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
@@ -6,7 +6,7 @@ import androidx.navigation.navArgument
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
-import com.example.interval.ui.screens.*
+import dev.marufeuille.intervo.ui.screens.*
 
 object Routes {
     const val WORKOUT_SELECT = "workout_select"

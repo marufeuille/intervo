@@ -1,4 +1,4 @@
-package com.example.interval.data
+package dev.marufeuille.intervo.data
 
 object DefaultWorkouts {
     suspend fun insert(db: AppDatabase) {

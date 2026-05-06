@@ -1,4 +1,4 @@
-package com.example.interval.ui.screens
+package dev.marufeuille.intervo.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -17,10 +17,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
-import com.example.interval.timer.TimerPhase
-import com.example.interval.timer.TimerState
-import com.example.interval.timer.TimerViewModel
-import com.example.interval.ui.theme.*
+import dev.marufeuille.intervo.timer.TimerPhase
+import dev.marufeuille.intervo.timer.TimerState
+import dev.marufeuille.intervo.timer.TimerViewModel
+import dev.marufeuille.intervo.ui.theme.*
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

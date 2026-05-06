@@ -1,4 +1,4 @@
-package com.example.interval.data
+package dev.marufeuille.intervo.data
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow

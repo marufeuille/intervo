@@ -1,13 +1,13 @@
-package com.example.interval
+package dev.marufeuille.intervo
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.ViewModelProvider
 import androidx.wear.ambient.AmbientLifecycleObserver
-import com.example.interval.timer.TimerViewModel
-import com.example.interval.ui.navigation.AppNavigation
-import com.example.interval.ui.theme.IntervalTheme
+import dev.marufeuille.intervo.timer.TimerViewModel
+import dev.marufeuille.intervo.ui.navigation.AppNavigation
+import dev.marufeuille.intervo.ui.theme.IntervalTheme
 
 class MainActivity : ComponentActivity() {
 

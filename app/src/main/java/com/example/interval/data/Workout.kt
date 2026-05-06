@@ -1,4 +1,4 @@
-package com.example.interval.data
+package dev.marufeuille.intervo.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

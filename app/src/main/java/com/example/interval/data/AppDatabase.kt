@@ -1,4 +1,4 @@
-package com.example.interval.data
+package dev.marufeuille.intervo.data
 
 import android.content.Context
 import androidx.room.Database

@@ -1,6 +1,6 @@
-package com.example.interval.timer
+package dev.marufeuille.intervo.timer
 
-import com.example.interval.data.Exercise
+import dev.marufeuille.intervo.data.Exercise
 
 sealed class TimerPhase {
     object Idle : TimerPhase()

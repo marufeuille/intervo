@@ -1,4 +1,4 @@
-package com.example.interval.ui.screens
+package dev.marufeuille.intervo.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -9,8 +9,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.*
-import com.example.interval.ui.theme.CompletionGreen
-import com.example.interval.ui.theme.TextSecondary
+import dev.marufeuille.intervo.ui.theme.CompletionGreen
+import dev.marufeuille.intervo.ui.theme.TextSecondary
 
 @Composable
 fun CompletionScreen(onDone: () -> Unit) {

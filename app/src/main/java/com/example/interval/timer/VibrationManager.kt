@@ -1,4 +1,4 @@
-package com.example.interval.timer
+package dev.marufeuille.intervo.timer
 
 import android.content.Context
 import android.os.Build

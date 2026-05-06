@@ -12,14 +12,14 @@ val keystoreProps = Properties().also { props ->
 }
 
 android {
-    namespace = "com.example.interval"
+    namespace = "dev.marufeuille.intervo"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.interval"
+        applicationId = "dev.marufeuille.intervo"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0"
     }
 
@@ -33,6 +33,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")

@@ -1,4 +1,4 @@
-package com.example.interval.ui.screens
+package dev.marufeuille.intervo.ui.screens
 
 import android.app.Application
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -17,11 +17,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
-import com.example.interval.data.AppDatabase
-import com.example.interval.data.Exercise
-import com.example.interval.data.Workout
-import com.example.interval.data.WorkoutRepository
-import com.example.interval.ui.theme.*
+import dev.marufeuille.intervo.data.AppDatabase
+import dev.marufeuille.intervo.data.Exercise
+import dev.marufeuille.intervo.data.Workout
+import dev.marufeuille.intervo.data.WorkoutRepository
+import dev.marufeuille.intervo.ui.theme.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 

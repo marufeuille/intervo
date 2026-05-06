@@ -1,4 +1,4 @@
-package com.example.interval.timer
+package dev.marufeuille.intervo.timer
 
 import android.app.Service
 import android.content.Context
@@ -6,7 +6,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.os.PowerManager
-import com.example.interval.data.Exercise
+import dev.marufeuille.intervo.data.Exercise
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
