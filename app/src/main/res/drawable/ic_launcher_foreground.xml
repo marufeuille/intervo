@@ -4,10 +4,72 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FF6B35"
-        android:pathData="M54,20 C35.2,20 20,35.2 20,54 C20,72.8 35.2,88 54,88 C72.8,88 88,72.8 88,54 C88,35.2 72.8,20 54,20 Z" />
+
+    <!-- 外リング（白） -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M44,38 L44,70 L72,54 Z" />
+        android:pathData="M54,14 C76.1,14 94,31.9 94,54 C94,76.1 76.1,94 54,94 C31.9,94 14,76.1 14,54 C14,31.9 31.9,14 54,14 Z"/>
+
+    <!-- 文字盤（ネイビー） -->
+    <path
+        android:fillColor="#0D1B38"
+        android:pathData="M54,18 C73.9,18 90,34.1 90,54 C90,73.9 73.9,90 54,90 C34.1,90 18,73.9 18,54 C18,34.1 34.1,18 54,18 Z"/>
+
+    <!-- クラウン（白） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,8 L57,8 C57.6,8 58,8.4 58,9 L58,14 L50,14 L50,9 C50,8.4 50.4,8 51,8 Z"/>
+
+    <!-- 目盛り 12時（オレンジ） -->
+    <path
+        android:strokeColor="#E8560A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M54,21 L54,27"/>
+
+    <!-- 目盛り 3時 -->
+    <path
+        android:strokeColor="#E8560A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M87,54 L81,54"/>
+
+    <!-- 目盛り 6時 -->
+    <path
+        android:strokeColor="#E8560A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M54,87 L54,81"/>
+
+    <!-- 目盛り 9時 -->
+    <path
+        android:strokeColor="#E8560A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M21,54 L27,54"/>
+
+    <!-- 針（白・1時方向） -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L66,28"/>
+
+    <!-- カウンターウェイト -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L50,63"/>
+
+    <!-- センターハブ（オレンジ） -->
+    <path
+        android:fillColor="#E8560A"
+        android:pathData="M54,49 C56.8,49 59,51.2 59,54 C59,56.8 56.8,59 54,59 C51.2,59 49,56.8 49,54 C49,51.2 51.2,49 54,49 Z"/>
+
+    <!-- センターハブ中心（白） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,52 C55.1,52 56,52.9 56,54 C56,55.1 55.1,56 54,56 C52.9,56 52,55.1 52,54 C52,52.9 52.9,52 54,52 Z"/>
+
 </vector>
