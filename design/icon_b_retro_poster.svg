@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background: deep navy -->
+  <rect width="512" height="512" fill="#0D1B38"/>
+
+  <!-- Diagonal orange block (bottom-right energy) -->
+  <polygon points="0,370 512,240 512,512 0,512" fill="#E8560A"/>
+
+  <!-- Speed stripe accent (thin) -->
+  <polygon points="0,338 512,210 512,226 0,386" fill="#FF8C3A" opacity="0.5"/>
+
+  <!-- Watch outer ring (white) — creates the bezel -->
+  <circle cx="256" cy="252" r="176" fill="white"/>
+
+  <!-- Watch face (dark navy) -->
+  <circle cx="256" cy="252" r="156" fill="#0D1B38"/>
+
+  <!-- Crown/stem (white) -->
+  <rect x="234" y="60" width="44" height="26" rx="7" fill="white"/>
+  <!-- Crown highlight -->
+  <rect x="234" y="60" width="44" height="10" rx="7" fill="#E8E8E8" opacity="0.5"/>
+
+  <!-- Orange tick marks at 12, 3, 6, 9 -->
+  <line x1="256" y1="104" x2="256" y2="128" stroke="#E8560A" stroke-width="8" stroke-linecap="round"/>
+  <line x1="404" y1="252" x2="380" y2="252" stroke="#E8560A" stroke-width="8" stroke-linecap="round"/>
+  <line x1="256" y1="400" x2="256" y2="376" stroke="#E8560A" stroke-width="8" stroke-linecap="round"/>
+  <line x1="108" y1="252" x2="132" y2="252" stroke="#E8560A" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Diagonal small ticks -->
+  <line x1="361" y1="147" x2="347" y2="167" stroke="white" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+  <line x1="361" y1="357" x2="347" y2="337" stroke="white" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+  <line x1="151" y1="357" x2="165" y2="337" stroke="white" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+  <line x1="151" y1="147" x2="165" y2="167" stroke="white" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+
+  <!-- Minute hand (white, bold) — pointing ~1 o'clock -->
+  <line x1="256" y1="252" x2="316" y2="112" stroke="white" stroke-width="10" stroke-linecap="round"/>
+  <!-- Counterweight -->
+  <line x1="256" y1="252" x2="236" y2="304" stroke="white" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- Center hub -->
+  <circle cx="256" cy="252" r="18" fill="#E8560A"/>
+  <circle cx="256" cy="252" r="8"  fill="white"/>
+</svg>

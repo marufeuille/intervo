@@ -29,14 +29,26 @@ class WorkoutRepository(private val db: AppDatabase) {
 
     suspend fun deleteWorkout(workout: Workout) = db.workoutDao().delete(workout)
 
-    suspend fun addExercise(workoutId: String, name: String, durationSeconds: Int, sets: Int, restSeconds: Int): Exercise {
+    suspend fun addExercise(
+        workoutId: String,
+        name: String,
+        mode: ExerciseMode,
+        durationSeconds: Int,
+        sets: Int,
+        restSeconds: Int,
+        repsPerSet: Int,
+        repRestSeconds: Int,
+    ): Exercise {
         val existing = db.exerciseDao().getByWorkoutOnce(workoutId)
         val exercise = Exercise(
             workoutId = workoutId,
             name = name,
+            mode = mode,
             durationSeconds = durationSeconds,
             sets = sets,
             restSeconds = restSeconds,
+            repsPerSet = repsPerSet,
+            repRestSeconds = repRestSeconds,
             sortOrder = existing.size
         )
         db.exerciseDao().insert(exercise)

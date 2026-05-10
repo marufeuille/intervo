@@ -7,6 +7,7 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.PowerManager
 import dev.marufeuille.intervo.data.Exercise
+import dev.marufeuille.intervo.data.ExerciseMode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +58,7 @@ class TimerService : Service() {
             phase = TimerPhase.ExercisePhase(
                 exerciseIndex = 0,
                 currentSet = 1,
+                currentRep = 1,
                 remainingSeconds = exercises[0].durationSeconds
             )
         )
@@ -76,11 +78,21 @@ class TimerService : Service() {
 
     fun skipRest() {
         val current = _state.value
-        val phase = current.phase as? TimerPhase.RestPhase ?: return
-        countdownJob?.cancel()
-        val unpaused = current.copy(isPaused = false)
-        advanceAfterRest(unpaused, phase.exerciseIndex, phase.completedSets)
-        startCountdown()
+        when (val phase = current.phase) {
+            is TimerPhase.RestPhase -> {
+                countdownJob?.cancel()
+                val unpaused = current.copy(isPaused = false)
+                advanceAfterRest(unpaused, phase.exerciseIndex, phase.completedSets)
+                startCountdown()
+            }
+            is TimerPhase.RepRestPhase -> {
+                countdownJob?.cancel()
+                val unpaused = current.copy(isPaused = false)
+                advanceAfterRepRest(unpaused, phase.exerciseIndex, phase.currentSet, phase.completedReps)
+                startCountdown()
+            }
+            else -> Unit
+        }
     }
 
     fun stop() {
@@ -118,20 +130,51 @@ class TimerService : Service() {
                         speechManager.speak(next.toString())
                     }
                 } else {
-                    vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
                     val exercise = current.exercises[phase.exerciseIndex]
-                    if (exercise.restSeconds > 0) {
-                        speechManager.speak("休憩")
-                        _state.value = current.copy(
-                            phase = TimerPhase.RestPhase(
-                                exerciseIndex = phase.exerciseIndex,
-                                completedSets = phase.currentSet,
-                                remainingSeconds = exercise.restSeconds
+                    val isRepsMode = exercise.mode == ExerciseMode.REPS
+                    val hasMoreReps = isRepsMode && phase.currentRep < exercise.repsPerSet
+                    if (hasMoreReps) {
+                        vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
+                        if (exercise.repRestSeconds > 0) {
+                            _state.value = current.copy(
+                                phase = TimerPhase.RepRestPhase(
+                                    exerciseIndex = phase.exerciseIndex,
+                                    currentSet = phase.currentSet,
+                                    completedReps = phase.currentRep,
+                                    remainingSeconds = exercise.repRestSeconds
+                                )
                             )
-                        )
+                        } else {
+                            advanceAfterRepRest(current, phase.exerciseIndex, phase.currentSet, phase.currentRep)
+                        }
                     } else {
-                        advanceAfterRest(current, phase.exerciseIndex, phase.currentSet)
+                        vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
+                        if (exercise.restSeconds > 0) {
+                            speechManager.speak("休憩")
+                            _state.value = current.copy(
+                                phase = TimerPhase.RestPhase(
+                                    exerciseIndex = phase.exerciseIndex,
+                                    completedSets = phase.currentSet,
+                                    remainingSeconds = exercise.restSeconds
+                                )
+                            )
+                        } else {
+                            advanceAfterRest(current, phase.exerciseIndex, phase.currentSet)
+                        }
                     }
+                }
+            }
+            is TimerPhase.RepRestPhase -> {
+                if (phase.remainingSeconds > 1) {
+                    val next = phase.remainingSeconds - 1
+                    _state.value = current.copy(phase = phase.copy(remainingSeconds = next))
+                    if (next in 1..3) {
+                        vibrationManager.vibrate(VibratePattern.COUNTDOWN_TICK)
+                        speechManager.speak(next.toString())
+                    }
+                } else {
+                    vibrationManager.vibrate(VibratePattern.REST_DONE)
+                    advanceAfterRepRest(current, phase.exerciseIndex, phase.currentSet, phase.completedReps)
                 }
             }
             is TimerPhase.RestPhase -> {
@@ -151,6 +194,24 @@ class TimerService : Service() {
         }
     }
 
+    private fun advanceAfterRepRest(
+        current: TimerState,
+        exerciseIndex: Int,
+        currentSet: Int,
+        completedReps: Int
+    ) {
+        val exercise = current.exercises[exerciseIndex]
+        speechManager.speak("次")
+        _state.value = current.copy(
+            phase = TimerPhase.ExercisePhase(
+                exerciseIndex = exerciseIndex,
+                currentSet = currentSet,
+                currentRep = completedReps + 1,
+                remainingSeconds = exercise.durationSeconds
+            )
+        )
+    }
+
     private fun advanceAfterRest(current: TimerState, exerciseIndex: Int, completedSets: Int) {
         val exercise = current.exercises[exerciseIndex]
         when {
@@ -160,6 +221,7 @@ class TimerService : Service() {
                     phase = TimerPhase.ExercisePhase(
                         exerciseIndex = exerciseIndex,
                         currentSet = completedSets + 1,
+                        currentRep = 1,
                         remainingSeconds = exercise.durationSeconds
                     )
                 )
@@ -171,6 +233,7 @@ class TimerService : Service() {
                     phase = TimerPhase.ExercisePhase(
                         exerciseIndex = exerciseIndex + 1,
                         currentSet = 1,
+                        currentRep = 1,
                         remainingSeconds = next.durationSeconds
                     )
                 )

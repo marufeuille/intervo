@@ -17,6 +17,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
+import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.timer.TimerPhase
 import dev.marufeuille.intervo.timer.TimerState
 import dev.marufeuille.intervo.timer.TimerViewModel
@@ -60,7 +61,7 @@ fun TimerScreen(
             state = state,
             onTap = {
                 when (state.phase) {
-                    is TimerPhase.RestPhase -> vm.skipRest()
+                    is TimerPhase.RestPhase, is TimerPhase.RepRestPhase -> vm.skipRest()
                     else -> if (state.isPaused) vm.resume() else vm.pause()
                 }
             },
@@ -101,17 +102,32 @@ private fun ActiveTimerContent(
     onLongPress: () -> Unit
 ) {
     val phase = state.phase
-    val isRest = phase is TimerPhase.RestPhase
-    val (remaining, exerciseName, phaseLabel, phaseColor, setInfo, totalSecs) = when (phase) {
+    val isRestLike = phase is TimerPhase.RestPhase || phase is TimerPhase.RepRestPhase
+    val info = when (phase) {
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
+            val isReps = ex?.mode == ExerciseMode.REPS
+            val setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット"
             TimerDisplayInfo(
                 remaining = phase.remainingSeconds,
                 exerciseName = ex?.name ?: "",
                 phaseLabel = if (state.isPaused) "一時停止" else "運動中",
                 phaseColor = ExerciseOrange,
-                setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット",
+                setInfo = setInfo,
+                repInfo = if (isReps) "${phase.currentRep} / ${ex?.repsPerSet ?: 0} レップ" else null,
                 totalSecs = ex?.durationSeconds ?: 1
+            )
+        }
+        is TimerPhase.RepRestPhase -> {
+            val ex = state.exercises.getOrNull(phase.exerciseIndex)
+            TimerDisplayInfo(
+                remaining = phase.remainingSeconds,
+                exerciseName = ex?.name ?: "",
+                phaseLabel = "レップ間",
+                phaseColor = RestBlue,
+                setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット",
+                repInfo = "${phase.completedReps} / ${ex?.repsPerSet ?: 0} レップ",
+                totalSecs = ex?.repRestSeconds?.takeIf { it > 0 } ?: 1
             )
         }
         is TimerPhase.RestPhase -> {
@@ -122,11 +138,19 @@ private fun ActiveTimerContent(
                 phaseLabel = "休憩中",
                 phaseColor = RestBlue,
                 setInfo = "${phase.completedSets} / ${ex?.sets ?: 0} セット",
+                repInfo = null,
                 totalSecs = ex?.restSeconds ?: 1
             )
         }
-        else -> TimerDisplayInfo(0, "", "", Color.Gray, "", 1)
+        else -> TimerDisplayInfo(0, "", "", Color.Gray, "", null, 1)
     }
+    val remaining = info.remaining
+    val exerciseName = info.exerciseName
+    val phaseLabel = info.phaseLabel
+    val phaseColor = info.phaseColor
+    val setInfo = info.setInfo
+    val repInfo = info.repInfo
+    val totalSecs = info.totalSecs
 
     val progress = if (totalSecs > 0) remaining.toFloat() / totalSecs else 0f
     val nextExercise = state.nextExercise
@@ -148,6 +172,9 @@ private fun ActiveTimerContent(
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(setInfo, fontSize = 12.sp, color = TextSecondary)
+            if (repInfo != null) {
+                Text(repInfo, fontSize = 11.sp, color = TextSecondary)
+            }
             Spacer(Modifier.height(2.dp))
             Text(exerciseName, fontSize = 13.sp, color = TextSecondary)
             Text(phaseLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = phaseColor, letterSpacing = 1.sp)
@@ -162,7 +189,7 @@ private fun ActiveTimerContent(
                 )
                 Text(" 秒", fontSize = 14.sp, color = TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
             }
-            if (isRest) {
+            if (isRestLike) {
                 Text("タップでスキップ", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
             } else if (nextExercise != null) {
                 Text("次: ${nextExercise.name}", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
@@ -175,6 +202,7 @@ private fun ActiveTimerContent(
 private fun AmbientTimerContent(state: TimerState) {
     val (remaining, phaseLabel) = when (val phase = state.phase) {
         is TimerPhase.ExercisePhase -> phase.remainingSeconds to "運動中"
+        is TimerPhase.RepRestPhase -> phase.remainingSeconds to "レップ間"
         is TimerPhase.RestPhase -> phase.remainingSeconds to "休憩中"
         else -> 0 to ""
     }
@@ -193,5 +221,6 @@ private data class TimerDisplayInfo(
     val phaseLabel: String,
     val phaseColor: Color,
     val setInfo: String,
+    val repInfo: String?,
     val totalSecs: Int
 )

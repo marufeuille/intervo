@@ -19,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
 import dev.marufeuille.intervo.data.AppDatabase
 import dev.marufeuille.intervo.data.Exercise
+import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.Workout
 import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.ui.theme.*
@@ -137,10 +138,13 @@ private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit, onLongClick: ()
     ) {
         Column {
             Text(exercise.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Text(
-                "${exercise.durationSeconds}秒×${exercise.sets} / 休${exercise.restSeconds}秒",
-                fontSize = 11.sp, color = TextSecondary
-            )
+            val summary = when (exercise.mode) {
+                ExerciseMode.TIMED ->
+                    "${exercise.durationSeconds}秒×${exercise.sets} / 休${exercise.restSeconds}秒"
+                ExerciseMode.REPS ->
+                    "${exercise.durationSeconds}秒×${exercise.repsPerSet}回×${exercise.sets}set / 休${exercise.restSeconds}秒"
+            }
+            Text(summary, fontSize = 11.sp, color = TextSecondary)
         }
         Text("›", fontSize = 18.sp, color = TextSecondary)
     }

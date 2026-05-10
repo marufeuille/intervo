@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <!-- 背景: ネイビー -->
+  <rect width="1024" height="500" fill="#0D1B38"/>
+
+  <!-- オレンジ対角ブロック（右下） -->
+  <polygon points="580,500 1024,300 1024,500" fill="#E8560A"/>
+  <polygon points="600,500 1024,310 1024,500" fill="#C44A08" opacity="0.4"/>
+
+  <!-- スピードストライプ -->
+  <polygon points="480,500 1024,270 1024,292 520,500" fill="#FF7A2A" opacity="0.25"/>
+
+  <!-- ストップウォッチアイコン（左寄り） -->
+  <!-- 外リング（クリーム） -->
+  <circle cx="290" cy="262" r="200" fill="white"/>
+  <!-- 文字盤（ネイビー） -->
+  <circle cx="290" cy="262" r="178" fill="#0D1B38"/>
+  <!-- クラウン -->
+  <rect x="264" y="44" width="52" height="30" rx="8" fill="white"/>
+  <!-- 目盛り 12/3/6/9 -->
+  <line x1="290" y1="92"  x2="290" y2="120" stroke="#E8560A" stroke-width="10" stroke-linecap="round"/>
+  <line x1="460" y1="262" x2="432" y2="262" stroke="#E8560A" stroke-width="10" stroke-linecap="round"/>
+  <line x1="290" y1="432" x2="290" y2="404" stroke="#E8560A" stroke-width="10" stroke-linecap="round"/>
+  <line x1="120" y1="262" x2="148" y2="262" stroke="#E8560A" stroke-width="10" stroke-linecap="round"/>
+  <!-- 斜め小目盛り -->
+  <line x1="410" y1="142" x2="394" y2="166" stroke="white" stroke-width="5" opacity="0.4" stroke-linecap="round"/>
+  <line x1="410" y1="382" x2="394" y2="358" stroke="white" stroke-width="5" opacity="0.4" stroke-linecap="round"/>
+  <line x1="170" y1="382" x2="186" y2="358" stroke="white" stroke-width="5" opacity="0.4" stroke-linecap="round"/>
+  <line x1="170" y1="142" x2="186" y2="166" stroke="white" stroke-width="5" opacity="0.4" stroke-linecap="round"/>
+  <!-- 針 -->
+  <line x1="290" y1="262" x2="358" y2="110" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <line x1="290" y1="262" x2="268" y2="322" stroke="white" stroke-width="9"  stroke-linecap="round"/>
+  <!-- センター -->
+  <circle cx="290" cy="262" r="22" fill="#E8560A"/>
+  <circle cx="290" cy="262" r="10" fill="white"/>
+
+  <!-- アプリ名 "Intervo" -->
+  <text x="555" y="218"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="90"
+        font-weight="800"
+        letter-spacing="-2"
+        fill="white">Intervo</text>
+
+  <!-- タグライン -->
+  <text x="558" y="270"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="24"
+        font-weight="400"
+        letter-spacing="4"
+        fill="#E8560A">WEAR OS INTERVAL TIMER</text>
+
+  <!-- 区切り線 -->
+  <line x1="557" y1="294" x2="920" y2="294" stroke="#E8560A" stroke-width="2" opacity="0.5"/>
+
+  <!-- 機能一覧 -->
+  <text x="560" y="336"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="20"
+        fill="white"
+        opacity="0.75">音声ガイド  ·  バイブレーション  ·  履歴記録</text>
+</svg>

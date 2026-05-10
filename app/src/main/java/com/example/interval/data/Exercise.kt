@@ -7,6 +7,11 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
+enum class ExerciseMode {
+    TIMED,
+    REPS
+}
+
 @Entity(
     tableName = "exercises",
     foreignKeys = [ForeignKey(
@@ -21,9 +26,12 @@ data class Exercise(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val workoutId: String,
     val name: String,
+    val mode: ExerciseMode = ExerciseMode.TIMED,
     val durationSeconds: Int,
     val sets: Int,
     val restSeconds: Int,
+    val repsPerSet: Int = 1,
+    val repRestSeconds: Int = 0,
     val sortOrder: Int
 )
 
@@ -45,3 +53,8 @@ const val SETS_MAX = 20
 const val REST_MIN = 0
 const val REST_MAX = 120
 const val REST_STEP = 5
+const val REPS_PER_SET_MIN = 1
+const val REPS_PER_SET_MAX = 30
+const val REP_REST_MIN = 0
+const val REP_REST_MAX = 30
+const val REP_REST_STEP = 1

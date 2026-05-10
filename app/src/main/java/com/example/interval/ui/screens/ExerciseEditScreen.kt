@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -17,6 +18,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
 import dev.marufeuille.intervo.data.*
+import dev.marufeuille.intervo.timer.VibratePattern
+import dev.marufeuille.intervo.timer.VibrationManager
 import dev.marufeuille.intervo.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -26,9 +29,12 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
     val exerciseId: String? = saved["exerciseId"]
 
     var name by mutableStateOf("")
+    var mode by mutableStateOf(ExerciseMode.TIMED)
     var durationSeconds by mutableStateOf(30)
     var sets by mutableStateOf(3)
     var restSeconds by mutableStateOf(10)
+    var repsPerSet by mutableStateOf(7)
+    var repRestSeconds by mutableStateOf(3)
     var error by mutableStateOf(false)
 
     private var existing: Exercise? = null
@@ -40,9 +46,12 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
                     list.find { it.id == id }?.let {
                         existing = it
                         name = it.name
+                        mode = it.mode
                         durationSeconds = it.durationSeconds
                         sets = it.sets
                         restSeconds = it.restSeconds
+                        repsPerSet = it.repsPerSet.coerceAtLeast(REPS_PER_SET_MIN)
+                        repRestSeconds = it.repRestSeconds
                     }
                 }
             }
@@ -58,14 +67,37 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
     fun adjustRest(delta: Int) {
         restSeconds = (restSeconds + delta).coerceIn(REST_MIN, REST_MAX)
     }
+    fun adjustRepsPerSet(delta: Int) {
+        repsPerSet = (repsPerSet + delta).coerceIn(REPS_PER_SET_MIN, REPS_PER_SET_MAX)
+    }
+    fun adjustRepRest(delta: Int) {
+        repRestSeconds = (repRestSeconds + delta).coerceIn(REP_REST_MIN, REP_REST_MAX)
+    }
 
     suspend fun save(): Boolean {
         if (name.isBlank()) { error = true; return false }
         val ex = existing
         if (ex != null) {
-            repo.updateExercise(ex.copy(name = name, durationSeconds = durationSeconds, sets = sets, restSeconds = restSeconds))
+            repo.updateExercise(ex.copy(
+                name = name,
+                mode = mode,
+                durationSeconds = durationSeconds,
+                sets = sets,
+                restSeconds = restSeconds,
+                repsPerSet = repsPerSet,
+                repRestSeconds = repRestSeconds
+            ))
         } else {
-            repo.addExercise(workoutId, name, durationSeconds, sets, restSeconds)
+            repo.addExercise(
+                workoutId = workoutId,
+                name = name,
+                mode = mode,
+                durationSeconds = durationSeconds,
+                sets = sets,
+                restSeconds = restSeconds,
+                repsPerSet = repsPerSet,
+                repRestSeconds = repRestSeconds
+            )
         }
         return true
     }
@@ -81,12 +113,16 @@ fun ExerciseEditScreen(
 ) {
     val scope = rememberCoroutineScope()
     var showInput by remember { mutableStateOf(false) }
+    val listState = rememberScalingLazyListState()
+    val context = LocalContext.current
+    val vibrator = remember { VibrationManager(context) }
 
     Scaffold(timeText = { TimeText() }) {
         ScalingLazyColumn(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 28.dp)
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 28.dp),
+            state = listState
         ) {
             item {
                 Text(
@@ -94,18 +130,29 @@ fun ExerciseEditScreen(
                     fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(6.dp))
+                val showError = vm.error && vm.name.isBlank()
+                val nameChipBg = when {
+                    showError -> Color.Red
+                    vm.name.isBlank() -> SurfaceDark
+                    else -> ExerciseOrange
+                }
+                val nameChipFg = when {
+                    showError -> Color.White
+                    vm.name.isBlank() -> TextSecondary
+                    else -> TextPrimary
+                }
+                val placeholder = if (showError) "！種目名を入力してください" else "種目名を入力..."
                 Chip(
                     label = {
                         Text(
-                            text = vm.name.ifBlank { "種目名を入力..." },
-                            color = if (vm.name.isBlank()) TextSecondary else TextPrimary,
-                            fontSize = 13.sp
+                            text = vm.name.ifBlank { placeholder },
+                            color = nameChipFg,
+                            fontSize = 13.sp,
+                            fontWeight = if (showError) FontWeight.Bold else FontWeight.Normal
                         )
                     },
                     onClick = { showInput = true },
-                    colors = ChipDefaults.chipColors(
-                        backgroundColor = if (vm.name.isBlank()) SurfaceDark else ExerciseOrange
-                    ),
+                    colors = ChipDefaults.chipColors(backgroundColor = nameChipBg),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(6.dp))
@@ -113,13 +160,37 @@ fun ExerciseEditScreen(
             }
             item {
                 Spacer(Modifier.height(4.dp))
+                ModeToggle(mode = vm.mode, onChange = { vm.mode = it })
+                Spacer(Modifier.height(4.dp))
+            }
+            item {
                 StepperRow(
-                    label = "運動",
+                    label = if (vm.mode == ExerciseMode.REPS) "ホールド" else "運動",
                     value = "${vm.durationSeconds}秒",
                     onMinus = { vm.adjustDuration(-DURATION_STEP) },
                     onPlus = { vm.adjustDuration(DURATION_STEP) },
                     accentColor = ExerciseOrange
                 )
+            }
+            if (vm.mode == ExerciseMode.REPS) {
+                item {
+                    StepperRow(
+                        label = "回数",
+                        value = "${vm.repsPerSet}回",
+                        onMinus = { vm.adjustRepsPerSet(-1) },
+                        onPlus = { vm.adjustRepsPerSet(1) },
+                        accentColor = ExerciseOrange
+                    )
+                }
+                item {
+                    StepperRow(
+                        label = "間休憩",
+                        value = "${vm.repRestSeconds}秒",
+                        onMinus = { vm.adjustRepRest(-REP_REST_STEP) },
+                        onPlus = { vm.adjustRepRest(REP_REST_STEP) },
+                        accentColor = RestBlue
+                    )
+                }
             }
             item {
                 StepperRow(
@@ -141,12 +212,17 @@ fun ExerciseEditScreen(
             }
             item {
                 Spacer(Modifier.height(8.dp))
-                if (vm.error) {
-                    Text("種目名を入力してください", color = Color.Red, fontSize = 12.sp)
-                    Spacer(Modifier.height(4.dp))
-                }
                 Button(
-                    onClick = { scope.launch { if (vm.save()) onSaved() } },
+                    onClick = {
+                        scope.launch {
+                            if (vm.save()) {
+                                onSaved()
+                            } else {
+                                vibrator.vibrate(VibratePattern.ERROR)
+                                listState.animateScrollToItem(0)
+                            }
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(backgroundColor = ExerciseOrange),
                     modifier = Modifier.width(140.dp)
                 ) {
@@ -167,6 +243,39 @@ fun ExerciseEditScreen(
 }
 
 @Composable
+private fun ModeToggle(
+    mode: ExerciseMode,
+    onChange: (ExerciseMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("方式", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(40.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ModePill(label = "時間", selected = mode == ExerciseMode.TIMED) { onChange(ExerciseMode.TIMED) }
+            ModePill(label = "回数", selected = mode == ExerciseMode.REPS) { onChange(ExerciseMode.REPS) }
+        }
+    }
+}
+
+@Composable
+private fun ModePill(label: String, selected: Boolean, onClick: () -> Unit) {
+    val bg = if (selected) ExerciseOrange else ButtonDark
+    val fg = if (selected) Color.White else TextSecondary
+    CompactButton(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(backgroundColor = bg)
+    ) {
+        Text(label, fontSize = 11.sp, color = fg, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
 private fun StepperRow(
     label: String,
     value: String,
@@ -179,7 +288,7 @@ private fun StepperRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(40.dp))
+        Text(label, fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(48.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CompactButton(
                 onClick = onMinus,

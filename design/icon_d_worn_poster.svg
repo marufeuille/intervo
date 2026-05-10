@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <!-- エッジをガタガタに崩す -->
+    <filter id="roughen" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="5" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- 輪郭だけ軽く崩す -->
+    <filter id="lightroughen" x="-4%" y="-4%" width="108%" height="108%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="4" seed="3" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- ヴィネット -->
+    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="55%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.6"/>
+    </radialGradient>
+    <!-- 版ずれ用（赤）-->
+    <filter id="ghostRed" x="-4%" y="-4%" width="108%" height="108%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="1" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- ハーフトーンパターン -->
+    <pattern id="halftone" x="0" y="0" width="9" height="9" patternUnits="userSpaceOnUse">
+      <circle cx="4.5" cy="4.5" r="1.8" fill="#1A2438" opacity="0.35"/>
+    </pattern>
+  </defs>
+
+  <!-- 背景：くすんだネイビー -->
+  <rect width="512" height="512" fill="#1A2438"/>
+
+  <!-- 版ずれゴースト（わずかにずれたオレンジ） -->
+  <polygon points="0,376 512,246 512,512 0,512" fill="#E05A22" opacity="0.25" filter="url(#ghostRed)" transform="translate(4, -3)"/>
+
+  <!-- オレンジブロック（擦れあり） -->
+  <polygon points="0,372 512,242 512,512 0,512" fill="#B84918" filter="url(#roughen)"/>
+
+  <!-- ハーフトーンをオレンジ上に重ねる -->
+  <polygon points="0,372 512,242 512,512 0,512" fill="url(#halftone)"/>
+
+  <!-- スピードストライプ（薄い） -->
+  <polygon points="0,340 512,212 512,232 0,360" fill="#D05520" opacity="0.3" filter="url(#lightroughen)"/>
+
+  <!-- 外リング（クリーム色、擦れあり） -->
+  <circle cx="256" cy="252" r="176" fill="#E2D0AA" filter="url(#roughen)"/>
+
+  <!-- 文字盤（ネイビー） -->
+  <circle cx="256" cy="252" r="155" fill="#1A2438" filter="url(#lightroughen)"/>
+
+  <!-- クラウン（クリーム） -->
+  <rect x="234" y="59" width="44" height="27" rx="7" fill="#E2D0AA" filter="url(#lightroughen)"/>
+
+  <!-- 目盛り（サビオレンジ） -->
+  <line x1="256" y1="105" x2="256" y2="130" stroke="#B84918" stroke-width="9" stroke-linecap="round"/>
+  <line x1="404" y1="252" x2="379" y2="252" stroke="#B84918" stroke-width="9" stroke-linecap="round"/>
+  <line x1="256" y1="399" x2="256" y2="374" stroke="#B84918" stroke-width="9" stroke-linecap="round"/>
+  <line x1="108" y1="252" x2="133" y2="252" stroke="#B84918" stroke-width="9" stroke-linecap="round"/>
+
+  <!-- 小目盛り（薄いクリーム） -->
+  <line x1="361" y1="147" x2="347" y2="167" stroke="#C8B88A" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+  <line x1="361" y1="357" x2="347" y2="337" stroke="#C8B88A" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+  <line x1="151" y1="357" x2="165" y2="337" stroke="#C8B88A" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+  <line x1="151" y1="147" x2="165" y2="167" stroke="#C8B88A" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+
+  <!-- 針（クリーム、擦れあり） -->
+  <line x1="256" y1="252" x2="316" y2="112" stroke="#E2D0AA" stroke-width="11" stroke-linecap="round" filter="url(#lightroughen)"/>
+  <line x1="256" y1="252" x2="236" y2="305" stroke="#E2D0AA" stroke-width="8"  stroke-linecap="round" filter="url(#lightroughen)"/>
+
+  <!-- センターハブ -->
+  <circle cx="256" cy="252" r="19" fill="#B84918"/>
+  <circle cx="256" cy="252" r="8"  fill="#E2D0AA"/>
+
+  <!-- スクラッチ線（白・薄い） -->
+  <line x1="0"   y1="73"  x2="512" y2="88"  stroke="white" stroke-width="0.9" opacity="0.10"/>
+  <line x1="0"   y1="192" x2="512" y2="182" stroke="white" stroke-width="1.4" opacity="0.08"/>
+  <line x1="0"   y1="310" x2="512" y2="328" stroke="white" stroke-width="0.7" opacity="0.09"/>
+  <line x1="0"   y1="460" x2="512" y2="448" stroke="white" stroke-width="1.1" opacity="0.07"/>
+  <line x1="42"  y1="0"   x2="28"  y2="512" stroke="white" stroke-width="0.6" opacity="0.08"/>
+  <line x1="188" y1="0"   x2="172" y2="512" stroke="white" stroke-width="0.8" opacity="0.07"/>
+  <line x1="420" y1="0"   x2="440" y2="512" stroke="white" stroke-width="0.6" opacity="0.08"/>
+
+  <!-- スクラッチ線（黒・くっきり） -->
+  <line x1="0"   y1="143" x2="512" y2="158" stroke="#000" stroke-width="1.2" opacity="0.14"/>
+  <line x1="300" y1="0"   x2="316" y2="512" stroke="#000" stroke-width="1.5" opacity="0.10"/>
+
+  <!-- 全体ヴィネット（四隅を暗く） -->
+  <rect width="512" height="512" fill="url(#vignette)"/>
+
+  <!-- セピア色ウォッシュ（ほんのり焼け感） -->
+  <rect width="512" height="512" fill="#7A4A28" opacity="0.07"/>
+</svg>

@@ -28,6 +28,8 @@ class VibrationManager(context: Context) {
                 VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE)
             VibratePattern.WORKOUT_COMPLETE ->
                 VibrationEffect.createWaveform(longArrayOf(0, 200, 100, 200, 100, 500), -1)
+            VibratePattern.ERROR ->
+                VibrationEffect.createWaveform(longArrayOf(0, 80, 80, 80, 80, 80), -1)
         }
         v.vibrate(effect)
     }
@@ -38,5 +40,6 @@ enum class VibratePattern {
     EXERCISE_DONE,
     REST_DONE,
     COUNTDOWN_TICK,
-    WORKOUT_COMPLETE
+    WORKOUT_COMPLETE,
+    ERROR
 }

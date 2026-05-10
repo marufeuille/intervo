@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 背景 -->
+  <rect width="512" height="512" fill="#0D0D0D"/>
+  <!-- オレンジ円 -->
+  <circle cx="256" cy="256" r="165" fill="#FF6B35"/>
+  <!-- 白い再生ボタン -->
+  <polygon points="210,180 210,332 358,256" fill="#FFFFFF"/>
+</svg>
