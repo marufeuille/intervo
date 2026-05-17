@@ -132,12 +132,19 @@ private fun ActiveTimerContent(
         }
         is TimerPhase.RestPhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
+            val isTransitionToNext = ex != null && phase.completedSets >= ex.sets
+            val upcoming = if (isTransitionToNext) {
+                state.exercises.getOrNull(phase.exerciseIndex + 1) ?: ex
+            } else {
+                ex
+            }
+            val upcomingSetNum = if (isTransitionToNext) 1 else phase.completedSets + 1
             TimerDisplayInfo(
                 remaining = phase.remainingSeconds,
-                exerciseName = ex?.name ?: "",
+                exerciseName = upcoming?.name ?: "",
                 phaseLabel = "休憩中",
                 phaseColor = RestBlue,
-                setInfo = "${phase.completedSets} / ${ex?.sets ?: 0} セット",
+                setInfo = "$upcomingSetNum / ${upcoming?.sets ?: 0} セット",
                 repInfo = null,
                 totalSecs = ex?.restSeconds ?: 1
             )
