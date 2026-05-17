@@ -57,6 +57,9 @@ class WorkoutRepository(private val db: AppDatabase) {
 
     suspend fun updateExercise(exercise: Exercise) = db.exerciseDao().update(exercise)
 
+    suspend fun reorderExercises(exercises: List<Exercise>) =
+        db.exerciseDao().updateOrder(exercises)
+
     suspend fun deleteExercise(exercise: Exercise) = db.exerciseDao().delete(exercise)
 
     suspend fun getExercisesOnce(workoutId: String): List<Exercise> =

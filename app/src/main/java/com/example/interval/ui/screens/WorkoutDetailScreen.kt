@@ -3,8 +3,10 @@ package dev.marufeuille.intervo.ui.screens
 import android.app.Application
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +40,13 @@ class WorkoutDetailViewModel(app: Application, saved: SavedStateHandle) : Androi
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     fun delete(exercise: Exercise) = viewModelScope.launch { repo.deleteExercise(exercise) }
+
+    fun move(from: Int, to: Int) = viewModelScope.launch {
+        val current = exercises.value.toMutableList()
+        if (from !in current.indices || to !in current.indices) return@launch
+        current.add(to, current.removeAt(from))
+        repo.reorderExercises(current)
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -52,6 +61,7 @@ fun WorkoutDetailScreen(
     val exercises by vm.exercises.collectAsStateWithLifecycle()
     val workout by vm.workout.collectAsStateWithLifecycle()
     var deleteTarget by remember { mutableStateOf<Exercise?>(null) }
+    var reorderMode by remember { mutableStateOf(false) }
 
     Scaffold(timeText = { TimeText() }) {
         ScalingLazyColumn(
@@ -73,12 +83,39 @@ fun WorkoutDetailScreen(
                     Text("エクササイズを追加してください", color = TextSecondary, fontSize = 13.sp)
                 }
             } else {
+                if (exercises.size >= 2) {
+                    item {
+                        Chip(
+                            label = {
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        if (reorderMode) "✓  完了" else "↕  並び替え",
+                                        color = if (reorderMode) ExerciseOrange else TextSecondary,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            },
+                            onClick = { reorderMode = !reorderMode },
+                            colors = ChipDefaults.chipColors(backgroundColor = SurfaceDark),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
                 items(exercises.size) { i ->
                     val ex = exercises[i]
                     ExerciseRow(
                         exercise = ex,
-                        onClick = { onExerciseClick(ex.id) },
-                        onLongClick = { deleteTarget = ex }
+                        reorderMode = reorderMode,
+                        isFirst = i == 0,
+                        isLast = i == exercises.size - 1,
+                        onClick = { if (!reorderMode) onExerciseClick(ex.id) },
+                        onLongClick = { if (!reorderMode) deleteTarget = ex },
+                        onMoveUp = { vm.move(i, i - 1) },
+                        onMoveDown = { vm.move(i, i + 1) }
                     )
                     if (i < exercises.size - 1) {
                         Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(DividerColor))
@@ -126,7 +163,16 @@ fun WorkoutDetailScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun ExerciseRow(
+    exercise: Exercise,
+    reorderMode: Boolean,
+    isFirst: Boolean,
+    isLast: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -136,7 +182,7 @@ private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit, onLongClick: ()
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(exercise.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             val summary = when (exercise.mode) {
                 ExerciseMode.TIMED ->
@@ -146,6 +192,28 @@ private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit, onLongClick: ()
             }
             Text(summary, fontSize = 11.sp, color = TextSecondary)
         }
-        Text("›", fontSize = 18.sp, color = TextSecondary)
+        if (reorderMode) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ReorderButton("▲", enabled = !isFirst, onClick = onMoveUp)
+                Spacer(Modifier.width(4.dp))
+                ReorderButton("▼", enabled = !isLast, onClick = onMoveDown)
+            }
+        } else {
+            Text("›", fontSize = 18.sp, color = TextSecondary)
+        }
+    }
+}
+
+@Composable
+private fun ReorderButton(symbol: String, enabled: Boolean, onClick: () -> Unit) {
+    val color = if (enabled) ExerciseOrange else DividerColor
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .background(SurfaceDark, CircleShape)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(symbol, fontSize = 14.sp, color = color)
     }
 }
