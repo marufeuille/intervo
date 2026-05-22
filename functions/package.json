@@ -1,0 +1,21 @@
+{
+  "name": "intervo-functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "deploy": "firebase deploy --only functions:ingestWorkoutHistory",
+    "serve": "firebase emulators:start --only functions"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^7.9.1",
+    "firebase-admin": "^12.1.1",
+    "firebase-functions": "^5.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}

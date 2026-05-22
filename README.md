@@ -4,7 +4,7 @@
   <p><strong>Wear OS インターバルタイマー</strong></p>
   <p>
     <img src="https://img.shields.io/badge/Wear%20OS-6.0-4285F4?logo=wear-os&logoColor=white" alt="Wear OS 6.0" />
-    <img src="https://img.shields.io/badge/version-1.4.1-E8560A" alt="version 1.4.1" />
+    <img src="https://img.shields.io/badge/version-1.5.0-E8560A" alt="version 1.5.0" />
     <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT" />
   </p>
 </div>
@@ -47,6 +47,7 @@
 
 - [ビルド・実機インストール手順](docs/build.md)
 - [実装計画](docs/plan/wear-os-interval-timer.md)
+- [Companion app と BigQuery 同期](docs/companion-bigquery.md)
 
 ## ライセンス
 

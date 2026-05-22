@@ -2,9 +2,13 @@ package dev.marufeuille.intervo.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import dev.marufeuille.intervo.sync.WorkoutHistorySyncClient
 
 
-class WorkoutRepository(private val db: AppDatabase) {
+class WorkoutRepository(
+    private val db: AppDatabase,
+    private val historySyncClient: WorkoutHistorySyncClient? = null,
+) {
     val workouts: Flow<List<Workout>> = db.workoutDao().getAll()
 
     val workoutsWithCount: Flow<List<WorkoutWithCount>> = db.workoutDao().getAllWithCount()
@@ -73,15 +77,18 @@ class WorkoutRepository(private val db: AppDatabase) {
         workoutId: String,
         workoutName: String,
         totalSeconds: Int,
-        exerciseCount: Int
-    ) {
-        db.workoutHistoryDao().insert(
-            WorkoutHistory(
-                workoutId = workoutId,
-                workoutName = workoutName,
-                totalSeconds = totalSeconds,
-                exerciseCount = exerciseCount
-            )
+        exerciseCount: Int,
+        workoutSortOrder: Int? = null,
+        exercises: List<Exercise> = emptyList(),
+    ): WorkoutHistory {
+        val history = WorkoutHistory(
+            workoutId = workoutId,
+            workoutName = workoutName,
+            totalSeconds = totalSeconds,
+            exerciseCount = exerciseCount
         )
+        db.workoutHistoryDao().insert(history)
+        historySyncClient?.send(history, workoutSortOrder, exercises)
+        return history
     }
 }

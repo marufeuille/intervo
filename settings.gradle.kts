@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "interval"
 include(":app")
+include(":companion")

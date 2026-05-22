@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 外リング（黒） -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M54,14 C76.1,14 94,31.9 94,54 C94,76.1 76.1,94 54,94 C31.9,94 14,76.1 14,54 C14,31.9 31.9,14 54,14 Z"/>
+
+    <!-- 文字盤（黄） -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M54,18 C73.9,18 90,34.1 90,54 C90,73.9 73.9,90 54,90 C34.1,90 18,73.9 18,54 C18,34.1 34.1,18 54,18 Z"/>
+
+    <!-- クラウン（黒） -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M51,8 L57,8 C57.6,8 58,8.4 58,9 L58,14 L50,14 L50,9 C50,8.4 50.4,8 51,8 Z"/>
+
+    <!-- 目盛り 12時（赤） -->
+    <path
+        android:strokeColor="#D32F2F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M54,21 L54,27"/>
+
+    <!-- 目盛り 3時 -->
+    <path
+        android:strokeColor="#D32F2F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M87,54 L81,54"/>
+
+    <!-- 目盛り 6時 -->
+    <path
+        android:strokeColor="#D32F2F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M54,87 L54,81"/>
+
+    <!-- 目盛り 9時 -->
+    <path
+        android:strokeColor="#D32F2F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M21,54 L27,54"/>
+
+    <!-- 針（黒・1時方向） -->
+    <path
+        android:strokeColor="#1A1A1A"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L66,28"/>
+
+    <!-- カウンターウェイト -->
+    <path
+        android:strokeColor="#1A1A1A"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L50,63"/>
+
+    <!-- センターハブ（赤） -->
+    <path
+        android:fillColor="#D32F2F"
+        android:pathData="M54,49 C56.8,49 59,51.2 59,54 C59,56.8 56.8,59 54,59 C51.2,59 49,56.8 49,54 C49,51.2 51.2,49 54,49 Z"/>
+
+    <!-- センターハブ中心（黒） -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M54,52 C55.1,52 56,52.9 56,54 C56,55.1 55.1,56 54,56 C52.9,56 52,55.1 52,54 C52,52.9 52.9,52 54,52 Z"/>
+
+    <!-- DBG バッジ背景（黒帯・下部） -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M30,68 L78,68 L78,80 L30,80 Z"/>
+
+    <!-- "D" -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M34,70 L34,78 L39,78 C42,78 44,76 44,74 C44,72 42,70 39,70 Z M37,72 L39,72 C40.5,72 41.5,73 41.5,74 C41.5,75 40.5,76 39,76 L37,76 Z"/>
+
+    <!-- "B" -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M48,70 L48,78 L53,78 C55,78 56.5,77 56.5,75.5 C56.5,74.5 55.7,73.8 54.6,73.6 C55.5,73.4 56,72.7 56,71.8 C56,70.7 54.8,70 53,70 Z M50.5,71.5 L52.7,71.5 C53.5,71.5 53.9,71.8 53.9,72.4 C53.9,73 53.5,73.3 52.7,73.3 L50.5,73.3 Z M50.5,74.6 L52.9,74.6 C53.8,74.6 54.2,75 54.2,75.6 C54.2,76.2 53.8,76.5 52.9,76.5 L50.5,76.5 Z"/>
+
+    <!-- "G" -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M65,70 C62.2,70 60,71.8 60,74 C60,76.2 62.2,78 65,78 C67,78 68.5,77.2 69,76 L69,73.5 L65,73.5 L65,75 L67,75 C66.7,75.7 65.9,76.2 65,76.2 C63.4,76.2 62.2,75.2 62.2,74 C62.2,72.8 63.4,71.8 65,71.8 C65.9,71.8 66.7,72.1 67,72.6 L68.6,71.5 C68,70.6 66.6,70 65,70 Z"/>
+
+</vector>

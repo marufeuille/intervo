@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import dev.marufeuille.intervo.data.AppDatabase
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.WorkoutRepository
+import dev.marufeuille.intervo.sync.WorkoutHistorySyncClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +19,10 @@ import kotlinx.coroutines.launch
 
 class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = WorkoutRepository(AppDatabase.getInstance(application))
+    private val repository = WorkoutRepository(
+        AppDatabase.getInstance(application),
+        WorkoutHistorySyncClient(application)
+    )
 
     private val _state = MutableStateFlow(TimerState())
     val state: StateFlow<TimerState> = _state.asStateFlow()
@@ -32,6 +36,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
     private var currentWorkoutId = ""
     private var currentWorkoutName = ""
+    private var currentWorkoutSortOrder: Int? = null
     private var historySaved = false
 
     private val serviceConnection = object : ServiceConnection {
@@ -75,6 +80,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val workout = repository.getWorkoutById(workoutId)
             currentWorkoutName = workout?.name ?: ""
+            currentWorkoutSortOrder = workout?.sortOrder
             val exercises = repository.getExercisesOnce(workoutId)
             if (exercises.isEmpty()) return@launch
             val svc = timerService
@@ -97,12 +103,16 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun saveHistory(state: TimerState) {
         viewModelScope.launch {
-            repository.addHistory(
-                workoutId = currentWorkoutId,
-                workoutName = currentWorkoutName,
-                totalSeconds = state.elapsedSeconds,
-                exerciseCount = state.exercises.size
-            )
+            runCatching {
+                repository.addHistory(
+                    workoutId = currentWorkoutId,
+                    workoutName = currentWorkoutName,
+                    totalSeconds = state.elapsedSeconds,
+                    exerciseCount = state.exercises.size,
+                    workoutSortOrder = currentWorkoutSortOrder,
+                    exercises = state.exercises,
+                )
+            }
         }
     }
 }

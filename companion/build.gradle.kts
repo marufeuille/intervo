@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 val keystoreProps = Properties().also { props ->
@@ -12,15 +13,20 @@ val keystoreProps = Properties().also { props ->
 }
 
 android {
-    namespace = "dev.marufeuille.intervo"
+    namespace = "dev.marufeuille.intervo.companion"
     compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.marufeuille.intervo"
-        minSdk = 30
+        minSdk = 26
         targetSdk = 36
-        versionCode = 10
+        versionCode = 12
         versionName = "1.5.0"
+        buildConfigField(
+            "String",
+            "DEFAULT_INGEST_ENDPOINT",
+            "\"https://asia-northeast1-intervo-app.cloudfunctions.net/ingestWorkoutHistory\""
+        )
     }
 
     signingConfigs {
@@ -45,6 +51,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -54,6 +61,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
@@ -67,19 +75,20 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.runtime.compose)
-    implementation(libs.lifecycle.service)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.compose.ui.tooling.preview)
 
-    implementation(libs.wear.compose.material)
-    implementation(libs.wear.compose.foundation)
-    implementation(libs.wear.compose.navigation)
-    implementation(libs.wear)
-    implementation(libs.wear.input)
     implementation(libs.play.services.wearable)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.appcheck)
+    implementation(libs.firebase.appcheck.playintegrity)
+    debugImplementation(libs.firebase.appcheck.debug)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
