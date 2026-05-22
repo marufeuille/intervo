@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEVICE_FILE="$ROOT_DIR/.adb-device"
+APK_PATH="$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk"
+PACKAGE_NAME="dev.marufeuille.intervo.debug"
+ADB_BIN="${ADB:-adb}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  scripts/watch-adb pair <ip:pairing-port> [pairing-code]
+  scripts/watch-adb connect [ip:debug-port]
+  scripts/watch-adb install [ip:debug-port]
+  scripts/watch-adb run [ip:debug-port]
+  scripts/watch-adb reinstall [ip:debug-port]
+  scripts/watch-adb devices
+  scripts/watch-adb discover
+  scripts/watch-adb disconnect [ip:debug-port]
+
+Examples:
+  scripts/watch-adb pair 192.168.1.23:37123 123456
+  scripts/watch-adb connect 192.168.1.23:42111
+  scripts/watch-adb reinstall
+
+After initial pairing, connect/install/run/reinstall can auto-discover a paired
+watch over mDNS. The last successful target is cached in .adb-device. You can
+also override it with INTERVO_ADB_SERIAL=ip:port.
+EOF
+}
+
+die() {
+  echo "watch-adb: $*" >&2
+  exit 1
+}
+
+require_adb() {
+  command -v "$ADB_BIN" >/dev/null 2>&1 || die "adb not found. Put Android SDK platform-tools on PATH."
+}
+
+configured_serial() {
+  if [[ -n "${INTERVO_ADB_SERIAL:-}" ]]; then
+    echo "$INTERVO_ADB_SERIAL"
+  elif [[ -f "$DEVICE_FILE" ]]; then
+    tr -d '[:space:]' < "$DEVICE_FILE"
+  fi
+}
+
+connected_serials() {
+  "$ADB_BIN" devices | awk 'NR > 1 && $2 == "device" { print $1 }'
+}
+
+discover_serials() {
+  { "$ADB_BIN" mdns services 2>/dev/null || true; } \
+    | awk '$0 ~ /_adb-tls-connect\._tcp/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-Fa-f:.]+:[0-9]+$/) print $i }' \
+    | sort -u
+}
+
+one_serial_or_empty() {
+  local serials="$1"
+  local count
+  count="$(printf '%s\n' "$serials" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [[ "$count" == "1" ]]; then
+    printf '%s\n' "$serials" | sed -n '1p'
+  fi
+}
+
+resolve_serial() {
+  local explicit="${1:-}"
+  local serial=""
+
+  if [[ -n "$explicit" ]]; then
+    serial="$explicit"
+    printf '%s\n' "$serial" > "$DEVICE_FILE"
+  else
+    serial="$(configured_serial || true)"
+  fi
+
+  if [[ -n "$serial" ]]; then
+    echo "$serial"
+    return
+  fi
+
+  local devices
+  devices="$(connected_serials)"
+  serial="$(one_serial_or_empty "$devices")"
+  if [[ -n "$serial" ]]; then
+    echo "$serial"
+    return
+  fi
+
+  local discovered
+  discovered="$(discover_serials)"
+  serial="$(one_serial_or_empty "$discovered")"
+  if [[ -n "$serial" ]]; then
+    printf '%s\n' "$serial" > "$DEVICE_FILE"
+    echo "$serial"
+    return
+  fi
+
+  if [[ -n "$discovered" ]]; then
+    echo "Discovered multiple paired watches:" >&2
+    printf '  %s\n' $discovered >&2
+    die "Run once with the target: scripts/watch-adb connect <ip:debug-port>"
+  fi
+
+  die "No paired watch found. Turn on Wireless debugging, then run scripts/watch-adb pair once if needed."
+}
+
+is_connected() {
+  local serial="$1"
+  "$ADB_BIN" devices | awk -v serial="$serial" '$1 == serial && $2 == "device" { found = 1 } END { exit(found ? 0 : 1) }'
+}
+
+try_connect() {
+  local serial="$1"
+  if is_connected "$serial"; then
+    echo "Already connected: $serial" >&2
+    return
+  fi
+
+  echo "Connecting: $serial" >&2
+  "$ADB_BIN" connect "$serial" >&2 || return 1
+  is_connected "$serial"
+}
+
+connect_target() {
+  local requested="${1:-}"
+  local serial
+
+  if [[ -n "$requested" ]]; then
+    serial="$requested"
+    if try_connect "$serial"; then
+      printf '%s\n' "$serial" > "$DEVICE_FILE"
+      echo "$serial"
+      return
+    fi
+    die "Failed to connect to $serial"
+  fi
+
+  serial="$(configured_serial || true)"
+  if [[ -n "$serial" ]] && try_connect "$serial"; then
+    printf '%s\n' "$serial" > "$DEVICE_FILE"
+    echo "$serial"
+    return
+  fi
+
+  local devices
+  devices="$(connected_serials)"
+  serial="$(one_serial_or_empty "$devices")"
+  if [[ -n "$serial" ]]; then
+    printf '%s\n' "$serial" > "$DEVICE_FILE"
+    echo "$serial"
+    return
+  fi
+
+  local discovered
+  discovered="$(discover_serials)"
+  serial="$(one_serial_or_empty "$discovered")"
+  if [[ -n "$serial" ]] && try_connect "$serial"; then
+    printf '%s\n' "$serial" > "$DEVICE_FILE"
+    echo "$serial"
+    return
+  fi
+
+  if [[ -n "$discovered" ]]; then
+    echo "Discovered multiple paired watches:" >&2
+    printf '  %s\n' $discovered >&2
+    die "Run once with the target: scripts/watch-adb connect <ip:debug-port>"
+  fi
+
+  die "No paired watch found. Turn on Wireless debugging, then run scripts/watch-adb pair once if needed."
+}
+
+build_debug() {
+  "$ROOT_DIR/gradlew" -p "$ROOT_DIR" assembleDebug
+}
+
+install_debug() {
+  local serial="$1"
+  [[ -f "$APK_PATH" ]] || build_debug
+  "$ADB_BIN" -s "$serial" install -r "$APK_PATH"
+}
+
+launch_debug() {
+  local serial="$1"
+  "$ADB_BIN" -s "$serial" shell monkey -p "$PACKAGE_NAME" 1 >/dev/null
+}
+
+main() {
+  require_adb
+
+  local command="${1:-}"
+  shift || true
+
+  case "$command" in
+    pair)
+      local pair_target="${1:-}"
+      local pair_code="${2:-}"
+      [[ -n "$pair_target" ]] || die "pair requires <ip:pairing-port>"
+      if [[ -n "$pair_code" ]]; then
+        "$ADB_BIN" pair "$pair_target" "$pair_code"
+      else
+        "$ADB_BIN" pair "$pair_target"
+      fi
+      ;;
+    connect)
+      local serial
+      serial="$(connect_target "${1:-}")"
+      echo "Saved device: $serial"
+      "$ADB_BIN" devices
+      ;;
+    install)
+      local serial
+      serial="$(connect_target "${1:-}")"
+      build_debug
+      install_debug "$serial"
+      ;;
+    run)
+      local serial
+      serial="$(connect_target "${1:-}")"
+      launch_debug "$serial"
+      ;;
+    reinstall)
+      local serial
+      serial="$(connect_target "${1:-}")"
+      build_debug
+      install_debug "$serial"
+      launch_debug "$serial"
+      ;;
+    devices)
+      "$ADB_BIN" devices -l
+      ;;
+    discover)
+      discover_serials
+      ;;
+    disconnect)
+      local serial
+      serial="$(resolve_serial "${1:-}")"
+      "$ADB_BIN" disconnect "$serial"
+      ;;
+    ""|help|-h|--help)
+      usage
+      ;;
+    *)
+      usage
+      die "Unknown command: $command"
+      ;;
+  esac
+}
+
+main "$@"

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import kotlinx.coroutines.*
@@ -29,6 +30,7 @@ class TimerService : Service() {
     private lateinit var vibrationManager: VibrationManager
     private lateinit var speechManager: SpeechManager
     private var wakeLock: PowerManager.WakeLock? = null
+    private var startedAtElapsedMillis: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -53,6 +55,7 @@ class TimerService : Service() {
         }
         vibrationManager.vibrate(VibratePattern.WORKOUT_START)
         speechManager.speak(exercises[0].name)
+        startedAtElapsedMillis = SystemClock.elapsedRealtime()
         _state.value = TimerState(
             exercises = exercises,
             phase = TimerPhase.ExercisePhase(
@@ -67,12 +70,12 @@ class TimerService : Service() {
 
     fun pause() {
         countdownJob?.cancel()
-        _state.value = _state.value.copy(isPaused = true)
+        _state.value = _state.value.copy(isPaused = true, elapsedSeconds = elapsedSecondsNow())
     }
 
     fun resume() {
         if (!_state.value.isPaused) return
-        _state.value = _state.value.copy(isPaused = false)
+        _state.value = _state.value.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow())
         startCountdown()
     }
 
@@ -81,23 +84,36 @@ class TimerService : Service() {
         when (val phase = current.phase) {
             is TimerPhase.RestPhase -> {
                 countdownJob?.cancel()
-                val unpaused = current.copy(isPaused = false)
+                val unpaused = current.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow())
                 advanceAfterRest(unpaused, phase.exerciseIndex, phase.completedSets)
-                startCountdown()
+                restartCountdownIfActive()
             }
             is TimerPhase.RepRestPhase -> {
                 countdownJob?.cancel()
-                val unpaused = current.copy(isPaused = false)
+                val unpaused = current.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow())
                 advanceAfterRepRest(unpaused, phase.exerciseIndex, phase.currentSet, phase.completedReps)
-                startCountdown()
+                restartCountdownIfActive()
             }
             else -> Unit
         }
     }
 
+    fun skipRep() {
+        val current = _state.value
+        val phase = current.phase as? TimerPhase.ExercisePhase ?: return
+        val exercise = current.exercises.getOrNull(phase.exerciseIndex) ?: return
+        if (exercise.mode != ExerciseMode.REPS) return
+
+        countdownJob?.cancel()
+        vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
+        finishExerciseInterval(current.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow()), phase)
+        restartCountdownIfActive()
+    }
+
     fun stop() {
         countdownJob?.cancel()
         releaseWakeLock()
+        startedAtElapsedMillis = 0L
         _state.value = TimerState()
         stopSelf()
     }
@@ -114,9 +130,20 @@ class TimerService : Service() {
                 delay(1000L)
                 val current = _state.value
                 if (current.isPaused) break
-                tick(current)
+                tick(current.copy(elapsedSeconds = elapsedSecondsNow()))
             }
         }
+    }
+
+    private fun restartCountdownIfActive() {
+        if (_state.value.phase !is TimerPhase.Complete) {
+            startCountdown()
+        }
+    }
+
+    private fun elapsedSecondsNow(): Int {
+        if (startedAtElapsedMillis == 0L) return 0
+        return ((SystemClock.elapsedRealtime() - startedAtElapsedMillis) / 1000L).toInt().coerceAtLeast(0)
     }
 
     private fun tick(current: TimerState) {
@@ -130,38 +157,8 @@ class TimerService : Service() {
                         speechManager.speak(next.toString())
                     }
                 } else {
-                    val exercise = current.exercises[phase.exerciseIndex]
-                    val isRepsMode = exercise.mode == ExerciseMode.REPS
-                    val hasMoreReps = isRepsMode && phase.currentRep < exercise.repsPerSet
-                    if (hasMoreReps) {
-                        vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
-                        if (exercise.repRestSeconds > 0) {
-                            _state.value = current.copy(
-                                phase = TimerPhase.RepRestPhase(
-                                    exerciseIndex = phase.exerciseIndex,
-                                    currentSet = phase.currentSet,
-                                    completedReps = phase.currentRep,
-                                    remainingSeconds = exercise.repRestSeconds
-                                )
-                            )
-                        } else {
-                            advanceAfterRepRest(current, phase.exerciseIndex, phase.currentSet, phase.currentRep)
-                        }
-                    } else {
-                        vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
-                        if (exercise.restSeconds > 0) {
-                            speechManager.speak("休憩")
-                            _state.value = current.copy(
-                                phase = TimerPhase.RestPhase(
-                                    exerciseIndex = phase.exerciseIndex,
-                                    completedSets = phase.currentSet,
-                                    remainingSeconds = exercise.restSeconds
-                                )
-                            )
-                        } else {
-                            advanceAfterRest(current, phase.exerciseIndex, phase.currentSet)
-                        }
-                    }
+                    vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
+                    finishExerciseInterval(current, phase)
                 }
             }
             is TimerPhase.RepRestPhase -> {
@@ -191,6 +188,38 @@ class TimerService : Service() {
                 }
             }
             else -> {}
+        }
+    }
+
+    private fun finishExerciseInterval(current: TimerState, phase: TimerPhase.ExercisePhase) {
+        val exercise = current.exercises[phase.exerciseIndex]
+        val hasMoreReps = exercise.mode == ExerciseMode.REPS && phase.currentRep < exercise.repsPerSet
+        if (hasMoreReps) {
+            if (exercise.repRestSeconds > 0) {
+                _state.value = current.copy(
+                    phase = TimerPhase.RepRestPhase(
+                        exerciseIndex = phase.exerciseIndex,
+                        currentSet = phase.currentSet,
+                        completedReps = phase.currentRep,
+                        remainingSeconds = exercise.repRestSeconds
+                    )
+                )
+            } else {
+                advanceAfterRepRest(current, phase.exerciseIndex, phase.currentSet, phase.currentRep)
+            }
+        } else {
+            if (exercise.restSeconds > 0) {
+                speechManager.speak("休憩")
+                _state.value = current.copy(
+                    phase = TimerPhase.RestPhase(
+                        exerciseIndex = phase.exerciseIndex,
+                        completedSets = phase.currentSet,
+                        remainingSeconds = exercise.restSeconds
+                    )
+                )
+            } else {
+                advanceAfterRest(current, phase.exerciseIndex, phase.currentSet)
+            }
         }
     }
 
@@ -241,7 +270,7 @@ class TimerService : Service() {
             else -> {
                 vibrationManager.vibrate(VibratePattern.WORKOUT_COMPLETE)
                 speechManager.speak("完了")
-                _state.value = current.copy(phase = TimerPhase.Complete)
+                _state.value = current.copy(phase = TimerPhase.Complete, elapsedSeconds = elapsedSecondsNow())
                 releaseWakeLock()
                 stopSelf()
             }

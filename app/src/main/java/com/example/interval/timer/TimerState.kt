@@ -28,7 +28,8 @@ sealed class TimerPhase {
 data class TimerState(
     val exercises: List<Exercise> = emptyList(),
     val phase: TimerPhase = TimerPhase.Idle,
-    val isPaused: Boolean = false
+    val isPaused: Boolean = false,
+    val elapsedSeconds: Int = 0
 ) {
     val currentExercise: Exercise?
         get() = when (val p = phase) {

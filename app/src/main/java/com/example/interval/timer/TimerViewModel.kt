@@ -90,6 +90,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun pause() { timerService?.pause() }
     fun resume() { timerService?.resume() }
     fun skipRest() { timerService?.skipRest() }
+    fun skipRep() { timerService?.skipRep() }
     fun stop() { timerService?.stop() }
 
     fun setAmbient(ambient: Boolean) { _isAmbient.value = ambient }
@@ -99,7 +100,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
             repository.addHistory(
                 workoutId = currentWorkoutId,
                 workoutName = currentWorkoutName,
-                totalSeconds = state.totalSeconds,
+                totalSeconds = state.elapsedSeconds,
                 exerciseCount = state.exercises.size
             )
         }

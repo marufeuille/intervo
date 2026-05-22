@@ -1,6 +1,7 @@
 package dev.marufeuille.intervo.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +43,7 @@ fun TimerScreen(
     }
 
     LaunchedEffect(state.phase) {
-        if (state.phase is TimerPhase.Complete) onComplete(state.totalSeconds)
+        if (state.phase is TimerPhase.Complete) onComplete(state.elapsedSeconds)
     }
 
     DisposableEffect(Unit) {
@@ -60,11 +62,10 @@ fun TimerScreen(
         ActiveTimerContent(
             state = state,
             onTap = {
-                when (state.phase) {
-                    is TimerPhase.RestPhase, is TimerPhase.RepRestPhase -> vm.skipRest()
-                    else -> if (state.isPaused) vm.resume() else vm.pause()
-                }
+                if (state.isPaused) vm.resume() else vm.pause()
             },
+            onSkipRest = { vm.skipRest() },
+            onSkipRep = { vm.skipRep() },
             onLongPress = { showStopDialog = true }
         )
     }
@@ -99,10 +100,14 @@ fun TimerScreen(
 private fun ActiveTimerContent(
     state: TimerState,
     onTap: () -> Unit,
+    onSkipRest: () -> Unit,
+    onSkipRep: () -> Unit,
     onLongPress: () -> Unit
 ) {
     val phase = state.phase
     val isRestLike = phase is TimerPhase.RestPhase || phase is TimerPhase.RepRestPhase
+    val canSkipRep = phase is TimerPhase.ExercisePhase &&
+        state.exercises.getOrNull(phase.exerciseIndex)?.mode == ExerciseMode.REPS
     val info = when (phase) {
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
@@ -197,11 +202,45 @@ private fun ActiveTimerContent(
                 Text(" 秒", fontSize = 14.sp, color = TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
             }
             if (isRestLike) {
-                Text("タップでスキップ", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
+                SkipButton(onClick = onSkipRest)
+            } else if (canSkipRep) {
+                SkipButton(onClick = onSkipRep)
             } else if (nextExercise != null) {
                 Text("次: ${nextExercise.name}", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
             }
         }
+    }
+}
+
+@Composable
+private fun SkipButton(onClick: () -> Unit) {
+    CompactButton(
+        onClick = onClick,
+        modifier = Modifier.size(width = 48.dp, height = 28.dp),
+        colors = ButtonDefaults.buttonColors(backgroundColor = ButtonDark)
+    ) {
+        FastForwardIcon(
+            modifier = Modifier.size(width = 20.dp, height = 14.dp),
+            color = TextPrimary
+        )
+    }
+}
+
+@Composable
+private fun FastForwardIcon(modifier: Modifier = Modifier, color: Color) {
+    Canvas(modifier = modifier) {
+        val gap = size.width * 0.08f
+        val triangleWidth = (size.width - gap) / 2f
+
+        fun triangle(startX: Float): Path = Path().apply {
+            moveTo(startX, 0f)
+            lineTo(startX + triangleWidth, size.height / 2f)
+            lineTo(startX, size.height)
+            close()
+        }
+
+        drawPath(triangle(0f), color)
+        drawPath(triangle(triangleWidth + gap), color)
     }
 }
 

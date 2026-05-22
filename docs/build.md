@@ -25,10 +25,40 @@ Debug と Release は別アプリとしてウォッチに共存できる。
 ./gradlew assembleDebug
 ```
 
-### Wi-Fi ADB でインストール
+### Wi-Fi ADB で接続・インストール
 
 1. ウォッチ側: 設定 → 一般 → 開発者向けオプション → ADB デバッグ ON → Wi-Fi 経由のデバッグ ON
 2. 表示されたIPアドレス:ポートで接続（初回はペアリングが必要）
+
+初回だけペアリングする:
+
+```bash
+scripts/watch-adb pair <IPアドレス>:<ペアリングポート> <ペアリングコード>
+```
+
+接続先を保存する:
+
+```bash
+scripts/watch-adb connect <IPアドレス>:<デバッグポート>
+```
+
+以後はIP/ポート指定なしで、保存済み接続先またはmDNS自動検出を使える:
+
+```bash
+scripts/watch-adb reinstall
+```
+
+`reinstall` は `assembleDebug` → `adb install -r` → アプリ起動まで実行する。
+接続だけ、インストールだけ、起動だけ行う場合はそれぞれ `connect` / `install` / `run` を使う。
+接続先が変わっても、ペアリング済みのウォッチが1台だけ見つかれば自動で `.adb-device` を更新する。
+
+自動検出できる接続先だけ確認する場合:
+
+```bash
+scripts/watch-adb discover
+```
+
+手動で実行する場合:
 
 ```bash
 adb connect <IPアドレス>:<ポート>

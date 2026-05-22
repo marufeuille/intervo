@@ -13,6 +13,7 @@ build/
 
 # Local configuration file (SDK paths — machine-specific)
 local.properties
+.adb-device
 
 # Signing configs (passwords / key paths)
 keystore.properties
@@ -20,6 +21,7 @@ keystore.properties
 *.keystore
 
 # IntelliJ / Android Studio
+.DS_Store
 *.iml
 .idea/
 misc.xml
