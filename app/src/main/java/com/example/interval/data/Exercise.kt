@@ -9,7 +9,8 @@ import java.util.UUID
 
 enum class ExerciseMode {
     TIMED,
-    REPS
+    REPS,
+    FREE
 }
 
 @Entity(

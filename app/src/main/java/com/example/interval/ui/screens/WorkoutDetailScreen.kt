@@ -189,6 +189,8 @@ private fun ExerciseRow(
                     "${exercise.durationSeconds}秒×${exercise.sets} / 休${exercise.restSeconds}秒"
                 ExerciseMode.REPS ->
                     "${exercise.durationSeconds}秒×${exercise.repsPerSet}回×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                ExerciseMode.FREE ->
+                    "フリー×${exercise.sets}set / 休${exercise.restSeconds}秒"
             }
             Text(summary, fontSize = 11.sp, color = TextSecondary)
         }

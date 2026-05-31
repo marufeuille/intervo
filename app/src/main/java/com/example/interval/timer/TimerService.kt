@@ -9,6 +9,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
+import dev.marufeuille.intervo.data.FreeSetRecordInput
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,8 @@ class TimerService : Service() {
     private lateinit var speechManager: SpeechManager
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtElapsedMillis: Long = 0L
+    private var pausedAtElapsedMillis: Long = 0L
+    private var totalPausedMillis: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -48,33 +51,42 @@ class TimerService : Service() {
 
     fun start(exercises: List<Exercise>) {
         if (exercises.isEmpty()) return
+        val first = exercises[0]
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock?.release()
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "interval:timer").also {
             it.acquire(2 * 60 * 60 * 1000L)
         }
         vibrationManager.vibrate(VibratePattern.WORKOUT_START)
-        speechManager.speak(exercises[0].name)
+        speechManager.speak(first.name)
         startedAtElapsedMillis = SystemClock.elapsedRealtime()
+        pausedAtElapsedMillis = 0L
+        totalPausedMillis = 0L
         _state.value = TimerState(
             exercises = exercises,
             phase = TimerPhase.ExercisePhase(
                 exerciseIndex = 0,
                 currentSet = 1,
                 currentRep = 1,
-                remainingSeconds = exercises[0].durationSeconds
+                remainingSeconds = first.initialExerciseSeconds()
             )
         )
         startCountdown()
     }
 
     fun pause() {
+        if (_state.value.isPaused) return
         countdownJob?.cancel()
         _state.value = _state.value.copy(isPaused = true, elapsedSeconds = elapsedSecondsNow())
+        pausedAtElapsedMillis = SystemClock.elapsedRealtime()
     }
 
     fun resume() {
         if (!_state.value.isPaused) return
+        if (pausedAtElapsedMillis > 0L) {
+            totalPausedMillis += SystemClock.elapsedRealtime() - pausedAtElapsedMillis
+            pausedAtElapsedMillis = 0L
+        }
         _state.value = _state.value.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow())
         startCountdown()
     }
@@ -110,10 +122,40 @@ class TimerService : Service() {
         restartCountdownIfActive()
     }
 
+    fun finishFreeSet(reps: Int? = null) {
+        val current = _state.value
+        val phase = current.phase as? TimerPhase.ExercisePhase ?: return
+        val exercise = current.exercises.getOrNull(phase.exerciseIndex) ?: return
+        if (exercise.mode != ExerciseMode.FREE) return
+
+        countdownJob?.cancel()
+        vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
+        val updated = current.copy(
+            isPaused = false,
+            elapsedSeconds = elapsedSecondsNow(),
+            freeSetRecords = current.freeSetRecords + FreeSetRecordInput(
+                exerciseId = exercise.id,
+                exerciseName = exercise.name,
+                setNumber = phase.currentSet,
+                durationSeconds = phase.remainingSeconds.coerceAtLeast(0),
+                reps = reps?.takeIf { it > 0 },
+                sortOrder = current.freeSetRecords.size
+            )
+        )
+        if (pausedAtElapsedMillis > 0L) {
+            totalPausedMillis += SystemClock.elapsedRealtime() - pausedAtElapsedMillis
+            pausedAtElapsedMillis = 0L
+        }
+        finishExerciseInterval(updated, phase)
+        restartCountdownIfActive()
+    }
+
     fun stop() {
         countdownJob?.cancel()
         releaseWakeLock()
         startedAtElapsedMillis = 0L
+        pausedAtElapsedMillis = 0L
+        totalPausedMillis = 0L
         _state.value = TimerState()
         stopSelf()
     }
@@ -143,13 +185,24 @@ class TimerService : Service() {
 
     private fun elapsedSecondsNow(): Int {
         if (startedAtElapsedMillis == 0L) return 0
-        return ((SystemClock.elapsedRealtime() - startedAtElapsedMillis) / 1000L).toInt().coerceAtLeast(0)
+        val now = SystemClock.elapsedRealtime()
+        val currentPauseMillis = if (_state.value.isPaused && pausedAtElapsedMillis > 0L) {
+            now - pausedAtElapsedMillis
+        } else {
+            0L
+        }
+        return ((now - startedAtElapsedMillis - totalPausedMillis - currentPauseMillis) / 1000L)
+            .toInt()
+            .coerceAtLeast(0)
     }
 
     private fun tick(current: TimerState) {
         when (val phase = current.phase) {
             is TimerPhase.ExercisePhase -> {
-                if (phase.remainingSeconds > 1) {
+                val exercise = current.exercises.getOrNull(phase.exerciseIndex)
+                if (exercise?.mode == ExerciseMode.FREE) {
+                    _state.value = current.copy(phase = phase.copy(remainingSeconds = phase.remainingSeconds + 1))
+                } else if (phase.remainingSeconds > 1) {
                     val next = phase.remainingSeconds - 1
                     _state.value = current.copy(phase = phase.copy(remainingSeconds = next))
                     if (next in 1..3) {
@@ -236,7 +289,7 @@ class TimerService : Service() {
                 exerciseIndex = exerciseIndex,
                 currentSet = currentSet,
                 currentRep = completedReps + 1,
-                remainingSeconds = exercise.durationSeconds
+                remainingSeconds = exercise.initialExerciseSeconds()
             )
         )
     }
@@ -251,7 +304,7 @@ class TimerService : Service() {
                         exerciseIndex = exerciseIndex,
                         currentSet = completedSets + 1,
                         currentRep = 1,
-                        remainingSeconds = exercise.durationSeconds
+                        remainingSeconds = exercise.initialExerciseSeconds()
                     )
                 )
             }
@@ -263,7 +316,7 @@ class TimerService : Service() {
                         exerciseIndex = exerciseIndex + 1,
                         currentSet = 1,
                         currentRep = 1,
-                        remainingSeconds = next.durationSeconds
+                        remainingSeconds = next.initialExerciseSeconds()
                     )
                 )
             }
@@ -276,4 +329,7 @@ class TimerService : Service() {
             }
         }
     }
+
+    private fun Exercise.initialExerciseSeconds(): Int =
+        if (mode == ExerciseMode.FREE) 0 else durationSeconds
 }

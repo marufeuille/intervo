@@ -163,14 +163,16 @@ fun ExerciseEditScreen(
                 ModeToggle(mode = vm.mode, onChange = { vm.mode = it })
                 Spacer(Modifier.height(4.dp))
             }
-            item {
-                StepperRow(
-                    label = if (vm.mode == ExerciseMode.REPS) "ホールド" else "運動",
-                    value = "${vm.durationSeconds}秒",
-                    onMinus = { vm.adjustDuration(-DURATION_STEP) },
-                    onPlus = { vm.adjustDuration(DURATION_STEP) },
-                    accentColor = ExerciseOrange
-                )
+            if (vm.mode != ExerciseMode.FREE) {
+                item {
+                    StepperRow(
+                        label = if (vm.mode == ExerciseMode.REPS) "ホールド" else "運動",
+                        value = "${vm.durationSeconds}秒",
+                        onMinus = { vm.adjustDuration(-DURATION_STEP) },
+                        onPlus = { vm.adjustDuration(DURATION_STEP) },
+                        accentColor = ExerciseOrange
+                    )
+                }
             }
             if (vm.mode == ExerciseMode.REPS) {
                 item {
@@ -256,9 +258,10 @@ private fun ModeToggle(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text("方式", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(40.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             ModePill(label = "時間", selected = mode == ExerciseMode.TIMED) { onChange(ExerciseMode.TIMED) }
             ModePill(label = "回数", selected = mode == ExerciseMode.REPS) { onChange(ExerciseMode.REPS) }
+            ModePill(label = "自由", selected = mode == ExerciseMode.FREE) { onChange(ExerciseMode.FREE) }
         }
     }
 }
@@ -269,6 +272,7 @@ private fun ModePill(label: String, selected: Boolean, onClick: () -> Unit) {
     val fg = if (selected) Color.White else TextSecondary
     CompactButton(
         onClick = onClick,
+        modifier = Modifier.size(width = 44.dp, height = 32.dp),
         colors = ButtonDefaults.buttonColors(backgroundColor = bg)
     ) {
         Text(label, fontSize = 11.sp, color = fg, fontWeight = FontWeight.SemiBold)

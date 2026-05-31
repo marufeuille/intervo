@@ -2,6 +2,7 @@ package dev.marufeuille.intervo.timer
 
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
+import dev.marufeuille.intervo.data.FreeSetRecordInput
 
 sealed class TimerPhase {
     object Idle : TimerPhase()
@@ -29,7 +30,8 @@ data class TimerState(
     val exercises: List<Exercise> = emptyList(),
     val phase: TimerPhase = TimerPhase.Idle,
     val isPaused: Boolean = false,
-    val elapsedSeconds: Int = 0
+    val elapsedSeconds: Int = 0,
+    val freeSetRecords: List<FreeSetRecordInput> = emptyList()
 ) {
     val currentExercise: Exercise?
         get() = when (val p = phase) {
@@ -62,6 +64,7 @@ data class TimerState(
                 ExerciseMode.TIMED -> ex.durationSeconds
                 ExerciseMode.REPS ->
                     ex.durationSeconds * ex.repsPerSet + ex.repRestSeconds * (ex.repsPerSet - 1).coerceAtLeast(0)
+                ExerciseMode.FREE -> 0
             }
             perSet * ex.sets + ex.restSeconds * ex.sets
         }

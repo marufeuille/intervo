@@ -21,7 +21,11 @@ class ExerciseModeConverter {
         runCatching { ExerciseMode.valueOf(value) }.getOrDefault(ExerciseMode.TIMED)
 }
 
-@Database(entities = [Workout::class, Exercise::class, WorkoutHistory::class], version = 3, exportSchema = false)
+@Database(
+    entities = [Workout::class, Exercise::class, WorkoutHistory::class, FreeSetRecord::class],
+    version = 4,
+    exportSchema = false
+)
 @TypeConverters(ExerciseModeConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun workoutDao(): WorkoutDao
@@ -54,6 +58,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS free_set_records (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        historyId TEXT NOT NULL,
+                        exerciseId TEXT NOT NULL,
+                        exerciseName TEXT NOT NULL,
+                        setNumber INTEGER NOT NULL,
+                        durationSeconds INTEGER NOT NULL,
+                        reps INTEGER,
+                        sortOrder INTEGER NOT NULL,
+                        FOREIGN KEY(historyId) REFERENCES workout_history(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_free_set_records_historyId ON free_set_records(historyId)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
@@ -61,7 +84,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context) =
             Room.databaseBuilder(context, AppDatabase::class.java, "interval.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {

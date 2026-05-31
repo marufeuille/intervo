@@ -73,6 +73,9 @@ class WorkoutRepository(
 
     val recentHistory: Flow<List<WorkoutHistory>> = db.workoutHistoryDao().getRecent()
 
+    val recentHistoryWithFreeSetRecords: Flow<List<WorkoutHistoryWithFreeSetRecords>> =
+        db.workoutHistoryDao().getRecentWithFreeSetRecords()
+
     suspend fun addHistory(
         workoutId: String,
         workoutName: String,
@@ -80,6 +83,7 @@ class WorkoutRepository(
         exerciseCount: Int,
         workoutSortOrder: Int? = null,
         exercises: List<Exercise> = emptyList(),
+        freeSetRecords: List<FreeSetRecordInput> = emptyList(),
     ): WorkoutHistory {
         val history = WorkoutHistory(
             workoutId = workoutId,
@@ -88,6 +92,21 @@ class WorkoutRepository(
             exerciseCount = exerciseCount
         )
         db.workoutHistoryDao().insert(history)
+        if (freeSetRecords.isNotEmpty()) {
+            db.workoutHistoryDao().insertFreeSetRecords(
+                freeSetRecords.map { record ->
+                    FreeSetRecord(
+                        historyId = history.id,
+                        exerciseId = record.exerciseId,
+                        exerciseName = record.exerciseName,
+                        setNumber = record.setNumber,
+                        durationSeconds = record.durationSeconds,
+                        reps = record.reps,
+                        sortOrder = record.sortOrder
+                    )
+                }
+            )
+        }
         historySyncClient?.send(history, workoutSortOrder, exercises)
         return history
     }

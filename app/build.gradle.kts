@@ -19,7 +19,7 @@ android {
         applicationId = "dev.marufeuille.intervo"
         minSdk = 30
         targetSdk = 36
-        versionCode = 10
+        versionCode = 11
         versionName = "1.5.0"
     }
 

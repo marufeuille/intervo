@@ -15,7 +15,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.getValue
 import androidx.wear.compose.material.*
 import dev.marufeuille.intervo.data.AppDatabase
-import dev.marufeuille.intervo.data.WorkoutHistory
+import dev.marufeuille.intervo.data.FreeSetRecord
+import dev.marufeuille.intervo.data.WorkoutHistoryWithFreeSetRecords
 import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.ui.theme.CompletionGreen
 import dev.marufeuille.intervo.ui.theme.TextPrimary
@@ -29,7 +30,7 @@ import java.util.Locale
 
 class HistoryViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = WorkoutRepository(AppDatabase.getInstance(app))
-    val history: StateFlow<List<WorkoutHistory>> = repo.recentHistory
+    val history: StateFlow<List<WorkoutHistoryWithFreeSetRecords>> = repo.recentHistoryWithFreeSetRecords
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
 
@@ -65,7 +66,8 @@ fun HistoryScreen(vm: HistoryViewModel = viewModel()) {
                     Spacer(Modifier.height(8.dp))
                 }
                 items(history.size) { i ->
-                    val h = history[i]
+                    val item = history[i]
+                    val h = item.history
                     val mins = h.totalSeconds / 60
                     val secs = h.totalSeconds % 60
                     val timeLabel = if (mins > 0) "${mins}分 ${secs}秒" else "${secs}秒"
@@ -85,9 +87,34 @@ fun HistoryScreen(vm: HistoryViewModel = viewModel()) {
                             Text("·", fontSize = 11.sp, color = TextSecondary)
                             Text(timeLabel, fontSize = 11.sp, color = CompletionGreen.copy(alpha = 0.8f))
                         }
+                        if (item.freeSetRecords.isNotEmpty()) {
+                            Spacer(Modifier.height(2.dp))
+                            item.freeSetRecords.sortedBy { it.sortOrder }.take(2).forEach { record ->
+                                Text(
+                                    freeSetRecordLabel(record),
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                            if (item.freeSetRecords.size > 2) {
+                                Text(
+                                    "他 ${item.freeSetRecords.size - 2}件",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private fun freeSetRecordLabel(record: FreeSetRecord): String {
+    val minutes = record.durationSeconds / 60
+    val seconds = record.durationSeconds % 60
+    val duration = if (minutes > 0) "${minutes}分${seconds}秒" else "${seconds}秒"
+    val reps = record.reps?.let { " / ${it}回" } ?: ""
+    return "${record.exerciseName} ${record.setNumber}set $duration$reps"
 }

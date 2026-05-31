@@ -36,6 +36,7 @@ fun TimerScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val isAmbient by vm.isAmbient.collectAsStateWithLifecycle()
     var showStopDialog by remember { mutableStateOf(false) }
+    var freeSetReview by remember { mutableStateOf<FreeSetReview?>(null) }
 
     LaunchedEffect(workoutId) {
         vm.bindService()
@@ -62,7 +63,17 @@ fun TimerScreen(
         ActiveTimerContent(
             state = state,
             onTap = {
-                if (state.isPaused) vm.resume() else vm.pause()
+                val phase = state.phase
+                val isFreeSet = phase is TimerPhase.ExercisePhase &&
+                    state.exercises.getOrNull(phase.exerciseIndex)?.mode == ExerciseMode.FREE
+                if (isFreeSet && phase is TimerPhase.ExercisePhase) {
+                    vm.pause()
+                    freeSetReview = FreeSetReview(durationSeconds = phase.remainingSeconds)
+                } else if (state.isPaused) {
+                    vm.resume()
+                } else {
+                    vm.pause()
+                }
             },
             onSkipRest = { vm.skipRest() },
             onSkipRep = { vm.skipRep() },
@@ -93,6 +104,20 @@ fun TimerScreen(
             }
         }
     }
+
+    freeSetReview?.let { review ->
+        FreeSetRecordDialog(
+            durationSeconds = review.durationSeconds,
+            onSave = { reps ->
+                vm.finishFreeSet(reps)
+                freeSetReview = null
+            },
+            onDismiss = {
+                freeSetReview = null
+                vm.resume()
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -112,15 +137,16 @@ private fun ActiveTimerContent(
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
             val isReps = ex?.mode == ExerciseMode.REPS
+            val isFree = ex?.mode == ExerciseMode.FREE
             val setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット"
             TimerDisplayInfo(
                 remaining = phase.remainingSeconds,
                 exerciseName = ex?.name ?: "",
-                phaseLabel = if (state.isPaused) "一時停止" else "運動中",
+                phaseLabel = if (state.isPaused) "一時停止" else if (isFree) "フリー" else "運動中",
                 phaseColor = ExerciseOrange,
                 setInfo = setInfo,
                 repInfo = if (isReps) "${phase.currentRep} / ${ex?.repsPerSet ?: 0} レップ" else null,
-                totalSecs = ex?.durationSeconds ?: 1
+                totalSecs = if (isFree) 0 else ex?.durationSeconds ?: 1
             )
         }
         is TimerPhase.RepRestPhase -> {
@@ -164,7 +190,7 @@ private fun ActiveTimerContent(
     val repInfo = info.repInfo
     val totalSecs = info.totalSecs
 
-    val progress = if (totalSecs > 0) remaining.toFloat() / totalSecs else 0f
+    val progress = if (totalSecs > 0) remaining.toFloat() / totalSecs else 1f
     val nextExercise = state.nextExercise
 
     Box(
@@ -227,6 +253,64 @@ private fun SkipButton(onClick: () -> Unit) {
 }
 
 @Composable
+private fun FreeSetRecordDialog(
+    durationSeconds: Int,
+    onSave: (Int?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var reps by remember(durationSeconds) { mutableStateOf(0) }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .background(SurfaceDark, shape = RoundedCornerShape(16.dp))
+                .padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("フリーセット", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Spacer(Modifier.height(4.dp))
+            Text(formatRecordDuration(durationSeconds), fontSize = 18.sp, color = ExerciseOrange, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CompactButton(
+                    onClick = { reps = (reps - 1).coerceAtLeast(0) },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = ButtonDark)
+                ) {
+                    Text("−", color = ExerciseOrange, fontSize = 16.sp)
+                }
+                Text(
+                    text = if (reps > 0) "${reps}回" else "回数なし",
+                    fontSize = 13.sp,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.width(56.dp)
+                )
+                CompactButton(
+                    onClick = { reps += 1 },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = ExerciseOrange)
+                ) {
+                    Text("＋", color = Color.White, fontSize = 14.sp)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CompactButton(
+                    onClick = { onSave(null) },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = ButtonDark)
+                ) {
+                    Text("なし", fontSize = 11.sp, color = TextSecondary)
+                }
+                CompactButton(
+                    onClick = { onSave(reps.takeIf { it > 0 }) },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = ExerciseOrange)
+                ) {
+                    Text("保存", fontSize = 11.sp, color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun FastForwardIcon(modifier: Modifier = Modifier, color: Color) {
     Canvas(modifier = modifier) {
         val gap = size.width * 0.08f
@@ -247,7 +331,10 @@ private fun FastForwardIcon(modifier: Modifier = Modifier, color: Color) {
 @Composable
 private fun AmbientTimerContent(state: TimerState) {
     val (remaining, phaseLabel) = when (val phase = state.phase) {
-        is TimerPhase.ExercisePhase -> phase.remainingSeconds to "運動中"
+        is TimerPhase.ExercisePhase -> {
+            val ex = state.exercises.getOrNull(phase.exerciseIndex)
+            phase.remainingSeconds to if (ex?.mode == ExerciseMode.FREE) "フリー" else "運動中"
+        }
         is TimerPhase.RepRestPhase -> phase.remainingSeconds to "レップ間"
         is TimerPhase.RestPhase -> phase.remainingSeconds to "休憩中"
         else -> 0 to ""
@@ -270,3 +357,13 @@ private data class TimerDisplayInfo(
     val repInfo: String?,
     val totalSecs: Int
 )
+
+private data class FreeSetReview(
+    val durationSeconds: Int
+)
+
+private fun formatRecordDuration(totalSeconds: Int): String {
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return if (minutes > 0) "${minutes}分 ${seconds}秒" else "${seconds}秒"
+}

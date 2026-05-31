@@ -97,6 +97,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun resume() { timerService?.resume() }
     fun skipRest() { timerService?.skipRest() }
     fun skipRep() { timerService?.skipRep() }
+    fun finishFreeSet(reps: Int? = null) { timerService?.finishFreeSet(reps) }
     fun stop() { timerService?.stop() }
 
     fun setAmbient(ambient: Boolean) { _isAmbient.value = ambient }
@@ -111,6 +112,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
                     exerciseCount = state.exercises.size,
                     workoutSortOrder = currentWorkoutSortOrder,
                     exercises = state.exercises,
+                    freeSetRecords = state.freeSetRecords,
                 )
             }
         }
