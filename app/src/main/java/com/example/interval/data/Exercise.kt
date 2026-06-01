@@ -56,6 +56,13 @@ const val REST_MAX = 120
 const val REST_STEP = 5
 const val REPS_PER_SET_MIN = 1
 const val REPS_PER_SET_MAX = 30
+const val REPS_OPEN_ENDED = -1
 const val REP_REST_MIN = 0
 const val REP_REST_MAX = 30
 const val REP_REST_STEP = 1
+
+fun Exercise.isOpenEndedReps(): Boolean =
+    mode == ExerciseMode.REPS && repsPerSet == REPS_OPEN_ENDED
+
+fun Exercise.effectiveRepsPerSet(): Int =
+    if (isOpenEndedReps()) REPS_OPEN_ENDED else repsPerSet.coerceIn(REPS_PER_SET_MIN, REPS_PER_SET_MAX)

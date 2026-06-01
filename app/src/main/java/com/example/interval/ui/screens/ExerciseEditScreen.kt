@@ -50,7 +50,7 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
                         durationSeconds = it.durationSeconds
                         sets = it.sets
                         restSeconds = it.restSeconds
-                        repsPerSet = it.repsPerSet.coerceAtLeast(REPS_PER_SET_MIN)
+                        repsPerSet = it.effectiveRepsPerSet()
                         repRestSeconds = it.repRestSeconds
                     }
                 }
@@ -68,7 +68,16 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
         restSeconds = (restSeconds + delta).coerceIn(REST_MIN, REST_MAX)
     }
     fun adjustRepsPerSet(delta: Int) {
-        repsPerSet = (repsPerSet + delta).coerceIn(REPS_PER_SET_MIN, REPS_PER_SET_MAX)
+        repsPerSet = (repsPerSet.takeIf { it >= REPS_PER_SET_MIN } ?: REPS_PER_SET_MIN)
+            .plus(delta)
+            .coerceIn(REPS_PER_SET_MIN, REPS_PER_SET_MAX)
+    }
+    fun setOpenEndedReps(openEnded: Boolean) {
+        repsPerSet = if (openEnded) {
+            REPS_OPEN_ENDED
+        } else {
+            repsPerSet.takeIf { it >= REPS_PER_SET_MIN } ?: REPS_PER_SET_MIN
+        }
     }
     fun adjustRepRest(delta: Int) {
         repRestSeconds = (repRestSeconds + delta).coerceIn(REP_REST_MIN, REP_REST_MAX)
@@ -176,13 +185,21 @@ fun ExerciseEditScreen(
             }
             if (vm.mode == ExerciseMode.REPS) {
                 item {
-                    StepperRow(
-                        label = "回数",
-                        value = "${vm.repsPerSet}回",
-                        onMinus = { vm.adjustRepsPerSet(-1) },
-                        onPlus = { vm.adjustRepsPerSet(1) },
-                        accentColor = ExerciseOrange
+                    RepsTargetToggle(
+                        openEnded = vm.repsPerSet == REPS_OPEN_ENDED,
+                        onChange = vm::setOpenEndedReps
                     )
+                }
+                if (vm.repsPerSet != REPS_OPEN_ENDED) {
+                    item {
+                        StepperRow(
+                            label = "回数",
+                            value = "${vm.repsPerSet}回",
+                            onMinus = { vm.adjustRepsPerSet(-1) },
+                            onPlus = { vm.adjustRepsPerSet(1) },
+                            accentColor = ExerciseOrange
+                        )
+                    }
                 }
                 item {
                     StepperRow(
@@ -262,6 +279,27 @@ private fun ModeToggle(
             ModePill(label = "時間", selected = mode == ExerciseMode.TIMED) { onChange(ExerciseMode.TIMED) }
             ModePill(label = "回数", selected = mode == ExerciseMode.REPS) { onChange(ExerciseMode.REPS) }
             ModePill(label = "自由", selected = mode == ExerciseMode.FREE) { onChange(ExerciseMode.FREE) }
+        }
+    }
+}
+
+@Composable
+private fun RepsTargetToggle(
+    openEnded: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("目標", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(40.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            ModePill(label = "指定", selected = !openEnded) { onChange(false) }
+            ModePill(label = "限界", selected = openEnded) { onChange(true) }
         }
     }
 }

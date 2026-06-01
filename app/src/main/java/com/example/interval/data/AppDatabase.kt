@@ -23,7 +23,7 @@ class ExerciseModeConverter {
 
 @Database(
     entities = [Workout::class, Exercise::class, WorkoutHistory::class, FreeSetRecord::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(ExerciseModeConverter::class)
@@ -36,8 +36,8 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile private var INSTANCE: AppDatabase? = null
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("""
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
                     CREATE TABLE IF NOT EXISTS workout_history (
                         id TEXT NOT NULL PRIMARY KEY,
                         workoutId TEXT NOT NULL,
@@ -51,16 +51,16 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE exercises ADD COLUMN mode TEXT NOT NULL DEFAULT 'TIMED'")
-                database.execSQL("ALTER TABLE exercises ADD COLUMN repsPerSet INTEGER NOT NULL DEFAULT 1")
-                database.execSQL("ALTER TABLE exercises ADD COLUMN repRestSeconds INTEGER NOT NULL DEFAULT 0")
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercises ADD COLUMN mode TEXT NOT NULL DEFAULT 'TIMED'")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN repsPerSet INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN repRestSeconds INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         private val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("""
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
                     CREATE TABLE IF NOT EXISTS free_set_records (
                         id TEXT NOT NULL PRIMARY KEY,
                         historyId TEXT NOT NULL,
@@ -73,7 +73,13 @@ abstract class AppDatabase : RoomDatabase() {
                         FOREIGN KEY(historyId) REFERENCES workout_history(id) ON DELETE CASCADE
                     )
                 """.trimIndent())
-                database.execSQL("CREATE INDEX IF NOT EXISTS index_free_set_records_historyId ON free_set_records(historyId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_free_set_records_historyId ON free_set_records(historyId)")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE exercises SET repsPerSet = 1 WHERE mode = 'REPS' AND repsPerSet = 0")
             }
         }
 
@@ -84,7 +90,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context) =
             Room.databaseBuilder(context, AppDatabase::class.java, "interval.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {

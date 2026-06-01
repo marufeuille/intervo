@@ -10,6 +10,8 @@ import android.os.SystemClock
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
+import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isOpenEndedReps
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -150,6 +152,42 @@ class TimerService : Service() {
         restartCountdownIfActive()
     }
 
+    fun finishOpenEndedRepSet() {
+        val current = _state.value
+        val exercisePhase = current.phase as? TimerPhase.ExercisePhase
+        val repRestPhase = current.phase as? TimerPhase.RepRestPhase
+        val exerciseIndex = exercisePhase?.exerciseIndex ?: repRestPhase?.exerciseIndex ?: return
+        val exercise = current.exercises.getOrNull(exerciseIndex) ?: return
+        if (!exercise.isOpenEndedReps()) return
+
+        countdownJob?.cancel()
+        vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
+        val currentSet = exercisePhase?.currentSet ?: repRestPhase?.currentSet ?: return
+        val completedReps = repRestPhase?.completedReps ?: ((exercisePhase?.currentRep ?: 1) - 1).coerceAtLeast(0)
+        val updated = current.copy(
+            isPaused = false,
+            elapsedSeconds = elapsedSecondsNow(),
+            freeSetRecords = if (completedReps > 0) {
+                current.freeSetRecords + FreeSetRecordInput(
+                    exerciseId = exercise.id,
+                    exerciseName = exercise.name,
+                    setNumber = currentSet,
+                    durationSeconds = exercise.durationSeconds * completedReps,
+                    reps = completedReps,
+                    sortOrder = current.freeSetRecords.size
+                )
+            } else {
+                current.freeSetRecords
+            }
+        )
+        if (pausedAtElapsedMillis > 0L) {
+            totalPausedMillis += SystemClock.elapsedRealtime() - pausedAtElapsedMillis
+            pausedAtElapsedMillis = 0L
+        }
+        finishExerciseSet(updated, exerciseIndex, currentSet)
+        restartCountdownIfActive()
+    }
+
     fun stop() {
         countdownJob?.cancel()
         releaseWakeLock()
@@ -246,7 +284,8 @@ class TimerService : Service() {
 
     private fun finishExerciseInterval(current: TimerState, phase: TimerPhase.ExercisePhase) {
         val exercise = current.exercises[phase.exerciseIndex]
-        val hasMoreReps = exercise.mode == ExerciseMode.REPS && phase.currentRep < exercise.repsPerSet
+        val hasMoreReps = exercise.mode == ExerciseMode.REPS &&
+            (exercise.isOpenEndedReps() || phase.currentRep < exercise.effectiveRepsPerSet())
         if (hasMoreReps) {
             if (exercise.repRestSeconds > 0) {
                 _state.value = current.copy(
@@ -261,18 +300,23 @@ class TimerService : Service() {
                 advanceAfterRepRest(current, phase.exerciseIndex, phase.currentSet, phase.currentRep)
             }
         } else {
-            if (exercise.restSeconds > 0) {
-                speechManager.speak("休憩")
-                _state.value = current.copy(
-                    phase = TimerPhase.RestPhase(
-                        exerciseIndex = phase.exerciseIndex,
-                        completedSets = phase.currentSet,
-                        remainingSeconds = exercise.restSeconds
-                    )
+            finishExerciseSet(current, phase.exerciseIndex, phase.currentSet)
+        }
+    }
+
+    private fun finishExerciseSet(current: TimerState, exerciseIndex: Int, currentSet: Int) {
+        val exercise = current.exercises[exerciseIndex]
+        if (exercise.restSeconds > 0) {
+            speechManager.speak("休憩")
+            _state.value = current.copy(
+                phase = TimerPhase.RestPhase(
+                    exerciseIndex = exerciseIndex,
+                    completedSets = currentSet,
+                    remainingSeconds = exercise.restSeconds
                 )
-            } else {
-                advanceAfterRest(current, phase.exerciseIndex, phase.currentSet)
-            }
+            )
+        } else {
+            advanceAfterRest(current, exerciseIndex, currentSet)
         }
     }
 

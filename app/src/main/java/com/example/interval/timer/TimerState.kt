@@ -3,6 +3,8 @@ package dev.marufeuille.intervo.timer
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
+import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isOpenEndedReps
 
 sealed class TimerPhase {
     object Idle : TimerPhase()
@@ -46,7 +48,8 @@ data class TimerState(
             return when (val p = phase) {
                 is TimerPhase.ExercisePhase -> {
                     val ex = exercises.getOrNull(p.exerciseIndex) ?: return null
-                    val isLastRep = ex.mode != ExerciseMode.REPS || p.currentRep >= ex.repsPerSet
+                    val isLastRep = ex.mode != ExerciseMode.REPS ||
+                        (!ex.isOpenEndedReps() && p.currentRep >= ex.effectiveRepsPerSet())
                     if (isLastRep && p.currentSet >= ex.sets) exercises.getOrNull(p.exerciseIndex + 1) else null
                 }
                 is TimerPhase.RepRestPhase -> null
@@ -62,8 +65,12 @@ data class TimerState(
         get() = exercises.sumOf { ex ->
             val perSet = when (ex.mode) {
                 ExerciseMode.TIMED -> ex.durationSeconds
-                ExerciseMode.REPS ->
-                    ex.durationSeconds * ex.repsPerSet + ex.repRestSeconds * (ex.repsPerSet - 1).coerceAtLeast(0)
+                ExerciseMode.REPS -> if (ex.isOpenEndedReps()) {
+                    0
+                } else {
+                    val reps = ex.effectiveRepsPerSet()
+                    ex.durationSeconds * reps + ex.repRestSeconds * (reps - 1).coerceAtLeast(0)
+                }
                 ExerciseMode.FREE -> 0
             }
             perSet * ex.sets + ex.restSeconds * ex.sets

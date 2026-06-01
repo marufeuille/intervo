@@ -98,6 +98,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun skipRest() { timerService?.skipRest() }
     fun skipRep() { timerService?.skipRep() }
     fun finishFreeSet(reps: Int? = null) { timerService?.finishFreeSet(reps) }
+    fun finishOpenEndedRepSet() { timerService?.finishOpenEndedRepSet() }
     fun stop() { timerService?.stop() }
 
     fun setAmbient(ambient: Boolean) { _isAmbient.value = ambient }

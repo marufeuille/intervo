@@ -6,6 +6,7 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.WorkoutHistory
+import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -73,7 +74,7 @@ private fun List<Exercise>.toSnapshotJson(): String {
                 .put("duration_seconds", exercise.durationSeconds)
                 .put("sets", exercise.sets)
                 .put("rest_seconds", exercise.restSeconds)
-                .put("reps_per_set", exercise.repsPerSet)
+                .put("reps_per_set", exercise.effectiveRepsPerSet())
                 .put("rep_rest_seconds", exercise.repRestSeconds)
                 .put("sort_order", exercise.sortOrder)
         )

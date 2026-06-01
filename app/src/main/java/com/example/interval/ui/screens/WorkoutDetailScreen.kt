@@ -24,6 +24,8 @@ import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.Workout
 import dev.marufeuille.intervo.data.WorkoutRepository
+import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isOpenEndedReps
 import dev.marufeuille.intervo.ui.theme.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -188,7 +190,11 @@ private fun ExerciseRow(
                 ExerciseMode.TIMED ->
                     "${exercise.durationSeconds}秒×${exercise.sets} / 休${exercise.restSeconds}秒"
                 ExerciseMode.REPS ->
-                    "${exercise.durationSeconds}秒×${exercise.repsPerSet}回×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                    if (exercise.isOpenEndedReps()) {
+                        "${exercise.durationSeconds}秒×限界×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                    } else {
+                        "${exercise.durationSeconds}秒×${exercise.effectiveRepsPerSet()}回×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                    }
                 ExerciseMode.FREE ->
                     "フリー×${exercise.sets}set / 休${exercise.restSeconds}秒"
             }

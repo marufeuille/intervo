@@ -20,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
 import dev.marufeuille.intervo.data.ExerciseMode
+import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isOpenEndedReps
 import dev.marufeuille.intervo.timer.TimerPhase
 import dev.marufeuille.intervo.timer.TimerState
 import dev.marufeuille.intervo.timer.TimerViewModel
@@ -77,6 +79,7 @@ fun TimerScreen(
             },
             onSkipRest = { vm.skipRest() },
             onSkipRep = { vm.skipRep() },
+            onFinishOpenEndedRepSet = { vm.finishOpenEndedRepSet() },
             onLongPress = { showStopDialog = true }
         )
     }
@@ -127,37 +130,52 @@ private fun ActiveTimerContent(
     onTap: () -> Unit,
     onSkipRest: () -> Unit,
     onSkipRep: () -> Unit,
+    onFinishOpenEndedRepSet: () -> Unit,
     onLongPress: () -> Unit
 ) {
     val phase = state.phase
     val isRestLike = phase is TimerPhase.RestPhase || phase is TimerPhase.RepRestPhase
+    val isOpenEndedRepSet = when (phase) {
+        is TimerPhase.ExercisePhase -> state.exercises.getOrNull(phase.exerciseIndex)?.isOpenEndedReps() == true
+        is TimerPhase.RepRestPhase -> state.exercises.getOrNull(phase.exerciseIndex)?.isOpenEndedReps() == true
+        else -> false
+    }
     val canSkipRep = phase is TimerPhase.ExercisePhase &&
-        state.exercises.getOrNull(phase.exerciseIndex)?.mode == ExerciseMode.REPS
+        state.exercises.getOrNull(phase.exerciseIndex)?.mode == ExerciseMode.REPS &&
+        !isOpenEndedRepSet
     val info = when (phase) {
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
             val isReps = ex?.mode == ExerciseMode.REPS
             val isFree = ex?.mode == ExerciseMode.FREE
+            val isOpenEndedReps = ex?.isOpenEndedReps() == true
+            val targetReps = ex?.effectiveRepsPerSet() ?: 0
             val setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット"
             TimerDisplayInfo(
                 remaining = phase.remainingSeconds,
                 exerciseName = ex?.name ?: "",
-                phaseLabel = if (state.isPaused) "一時停止" else if (isFree) "フリー" else "運動中",
+                phaseLabel = if (state.isPaused) "一時停止" else if (isFree) "フリー" else if (isOpenEndedReps) "限界まで" else "運動中",
                 phaseColor = ExerciseOrange,
                 setInfo = setInfo,
-                repInfo = if (isReps) "${phase.currentRep} / ${ex?.repsPerSet ?: 0} レップ" else null,
+                repInfo = if (isReps) {
+                    if (isOpenEndedReps) "${phase.currentRep}回目 / 限界" else "${phase.currentRep} / $targetReps レップ"
+                } else {
+                    null
+                },
                 totalSecs = if (isFree) 0 else ex?.durationSeconds ?: 1
             )
         }
         is TimerPhase.RepRestPhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
+            val isOpenEndedReps = ex?.isOpenEndedReps() == true
+            val targetReps = ex?.effectiveRepsPerSet() ?: 0
             TimerDisplayInfo(
                 remaining = phase.remainingSeconds,
                 exerciseName = ex?.name ?: "",
                 phaseLabel = "レップ間",
                 phaseColor = RestBlue,
                 setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット",
-                repInfo = "${phase.completedReps} / ${ex?.repsPerSet ?: 0} レップ",
+                repInfo = if (isOpenEndedReps) "${phase.completedReps}回完了 / 限界" else "${phase.completedReps} / $targetReps レップ",
                 totalSecs = ex?.repRestSeconds?.takeIf { it > 0 } ?: 1
             )
         }
@@ -227,7 +245,9 @@ private fun ActiveTimerContent(
                 )
                 Text(" 秒", fontSize = 14.sp, color = TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
             }
-            if (isRestLike) {
+            if (isOpenEndedRepSet) {
+                FinishSetButton(onClick = onFinishOpenEndedRepSet)
+            } else if (isRestLike) {
                 SkipButton(onClick = onSkipRest)
             } else if (canSkipRep) {
                 SkipButton(onClick = onSkipRep)
@@ -235,6 +255,17 @@ private fun ActiveTimerContent(
                 Text("次: ${nextExercise.name}", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
             }
         }
+    }
+}
+
+@Composable
+private fun FinishSetButton(onClick: () -> Unit) {
+    CompactButton(
+        onClick = onClick,
+        modifier = Modifier.size(width = 54.dp, height = 28.dp),
+        colors = ButtonDefaults.buttonColors(backgroundColor = ExerciseOrange)
+    ) {
+        Text("終了", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -333,7 +364,11 @@ private fun AmbientTimerContent(state: TimerState) {
     val (remaining, phaseLabel) = when (val phase = state.phase) {
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
-            phase.remainingSeconds to if (ex?.mode == ExerciseMode.FREE) "フリー" else "運動中"
+            phase.remainingSeconds to when {
+                ex?.mode == ExerciseMode.FREE -> "フリー"
+                ex?.isOpenEndedReps() == true -> "限界まで"
+                else -> "運動中"
+            }
         }
         is TimerPhase.RepRestPhase -> phase.remainingSeconds to "レップ間"
         is TimerPhase.RestPhase -> phase.remainingSeconds to "休憩中"
