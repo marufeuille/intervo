@@ -9,8 +9,7 @@ import java.util.UUID
 
 enum class ExerciseMode {
     TIMED,
-    REPS,
-    FREE
+    REPS
 }
 
 @Entity(
@@ -49,6 +48,7 @@ val EXERCISE_PRESET_NAMES = listOf(
 const val DURATION_MIN = 5
 const val DURATION_MAX = 300
 const val DURATION_STEP = 5
+const val DURATION_UNLIMITED = -1
 const val SETS_MIN = 1
 const val SETS_MAX = 20
 const val REST_MIN = 0
@@ -63,6 +63,9 @@ const val REP_REST_STEP = 1
 
 fun Exercise.isOpenEndedReps(): Boolean =
     mode == ExerciseMode.REPS && repsPerSet == REPS_OPEN_ENDED
+
+fun Exercise.isDurationUnlimited(): Boolean =
+    mode == ExerciseMode.TIMED && durationSeconds == DURATION_UNLIMITED
 
 fun Exercise.effectiveRepsPerSet(): Int =
     if (isOpenEndedReps()) REPS_OPEN_ENDED else repsPerSet.coerceIn(REPS_PER_SET_MIN, REPS_PER_SET_MAX)

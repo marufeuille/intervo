@@ -58,8 +58,25 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
         }
     }
 
+    fun updateMode(newMode: ExerciseMode) {
+        mode = newMode
+        if (newMode == ExerciseMode.REPS && durationSeconds == DURATION_UNLIMITED) {
+            durationSeconds = 30
+        }
+    }
+    fun setDurationUnlimited(unlimited: Boolean) {
+        if (mode != ExerciseMode.TIMED) return
+        durationSeconds = if (unlimited) {
+            DURATION_UNLIMITED
+        } else {
+            durationSeconds.takeIf { it != DURATION_UNLIMITED } ?: 30
+        }
+    }
+    fun isDurationUnlimited(): Boolean =
+        mode == ExerciseMode.TIMED && durationSeconds == DURATION_UNLIMITED
     fun adjustDuration(delta: Int) {
-        durationSeconds = (durationSeconds + delta).coerceIn(DURATION_MIN, DURATION_MAX)
+        val current = if (durationSeconds == DURATION_UNLIMITED) DURATION_MIN else durationSeconds
+        durationSeconds = (current + delta).coerceIn(DURATION_MIN, DURATION_MAX)
     }
     fun adjustSets(delta: Int) {
         sets = (sets + delta).coerceIn(SETS_MIN, SETS_MAX)
@@ -86,11 +103,16 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
     suspend fun save(): Boolean {
         if (name.isBlank()) { error = true; return false }
         val ex = existing
+        val savedDurationSeconds = if (mode == ExerciseMode.REPS && durationSeconds == DURATION_UNLIMITED) {
+            30
+        } else {
+            durationSeconds
+        }
         if (ex != null) {
             repo.updateExercise(ex.copy(
                 name = name,
                 mode = mode,
-                durationSeconds = durationSeconds,
+                durationSeconds = savedDurationSeconds,
                 sets = sets,
                 restSeconds = restSeconds,
                 repsPerSet = repsPerSet,
@@ -101,7 +123,7 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
                 workoutId = workoutId,
                 name = name,
                 mode = mode,
-                durationSeconds = durationSeconds,
+                durationSeconds = savedDurationSeconds,
                 sets = sets,
                 restSeconds = restSeconds,
                 repsPerSet = repsPerSet,
@@ -169,10 +191,18 @@ fun ExerciseEditScreen(
             }
             item {
                 Spacer(Modifier.height(4.dp))
-                ModeToggle(mode = vm.mode, onChange = { vm.mode = it })
+                ModeToggle(mode = vm.mode, onChange = vm::updateMode)
                 Spacer(Modifier.height(4.dp))
             }
-            if (vm.mode != ExerciseMode.FREE) {
+            if (vm.mode == ExerciseMode.TIMED) {
+                item {
+                    DurationTargetToggle(
+                        unlimited = vm.isDurationUnlimited(),
+                        onChange = vm::setDurationUnlimited
+                    )
+                }
+            }
+            if (vm.mode == ExerciseMode.REPS || !vm.isDurationUnlimited()) {
                 item {
                     StepperRow(
                         label = if (vm.mode == ExerciseMode.REPS) "ホールド" else "運動",
@@ -278,7 +308,27 @@ private fun ModeToggle(
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             ModePill(label = "時間", selected = mode == ExerciseMode.TIMED) { onChange(ExerciseMode.TIMED) }
             ModePill(label = "回数", selected = mode == ExerciseMode.REPS) { onChange(ExerciseMode.REPS) }
-            ModePill(label = "自由", selected = mode == ExerciseMode.FREE) { onChange(ExerciseMode.FREE) }
+        }
+    }
+}
+
+@Composable
+private fun DurationTargetToggle(
+    unlimited: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("時間", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(40.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            ModePill(label = "指定", selected = !unlimited) { onChange(false) }
+            ModePill(label = "自由", selected = unlimited) { onChange(true) }
         }
     }
 }

@@ -18,12 +18,16 @@ class ExerciseModeConverter {
 
     @TypeConverter
     fun toMode(value: String): ExerciseMode =
-        runCatching { ExerciseMode.valueOf(value) }.getOrDefault(ExerciseMode.TIMED)
+        if (value == "FREE") {
+            ExerciseMode.TIMED
+        } else {
+            runCatching { ExerciseMode.valueOf(value) }.getOrDefault(ExerciseMode.TIMED)
+        }
 }
 
 @Database(
     entities = [Workout::class, Exercise::class, WorkoutHistory::class, FreeSetRecord::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(ExerciseModeConverter::class)
@@ -83,6 +87,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE exercises SET mode = 'TIMED', durationSeconds = -1 WHERE mode = 'FREE'")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
@@ -90,7 +100,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context) =
             Room.databaseBuilder(context, AppDatabase::class.java, "interval.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {

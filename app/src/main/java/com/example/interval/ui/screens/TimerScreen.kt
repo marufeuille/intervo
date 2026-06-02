@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
 import dev.marufeuille.intervo.timer.TimerPhase
 import dev.marufeuille.intervo.timer.TimerState
@@ -67,7 +68,7 @@ fun TimerScreen(
             onTap = {
                 val phase = state.phase
                 val isFreeSet = phase is TimerPhase.ExercisePhase &&
-                    state.exercises.getOrNull(phase.exerciseIndex)?.mode == ExerciseMode.FREE
+                    state.exercises.getOrNull(phase.exerciseIndex)?.isDurationUnlimited() == true
                 if (isFreeSet && phase is TimerPhase.ExercisePhase) {
                     vm.pause()
                     freeSetReview = FreeSetReview(durationSeconds = phase.remainingSeconds)
@@ -147,7 +148,7 @@ private fun ActiveTimerContent(
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
             val isReps = ex?.mode == ExerciseMode.REPS
-            val isFree = ex?.mode == ExerciseMode.FREE
+            val isFree = ex?.isDurationUnlimited() == true
             val isOpenEndedReps = ex?.isOpenEndedReps() == true
             val targetReps = ex?.effectiveRepsPerSet() ?: 0
             val setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット"
@@ -365,7 +366,7 @@ private fun AmbientTimerContent(state: TimerState) {
         is TimerPhase.ExercisePhase -> {
             val ex = state.exercises.getOrNull(phase.exerciseIndex)
             phase.remainingSeconds to when {
-                ex?.mode == ExerciseMode.FREE -> "フリー"
+                ex?.isDurationUnlimited() == true -> "フリー"
                 ex?.isOpenEndedReps() == true -> "限界まで"
                 else -> "運動中"
             }

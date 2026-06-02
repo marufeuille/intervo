@@ -11,6 +11,7 @@ import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -128,7 +129,7 @@ class TimerService : Service() {
         val current = _state.value
         val phase = current.phase as? TimerPhase.ExercisePhase ?: return
         val exercise = current.exercises.getOrNull(phase.exerciseIndex) ?: return
-        if (exercise.mode != ExerciseMode.FREE) return
+        if (!exercise.isDurationUnlimited()) return
 
         countdownJob?.cancel()
         vibrationManager.vibrate(VibratePattern.EXERCISE_DONE)
@@ -238,7 +239,7 @@ class TimerService : Service() {
         when (val phase = current.phase) {
             is TimerPhase.ExercisePhase -> {
                 val exercise = current.exercises.getOrNull(phase.exerciseIndex)
-                if (exercise?.mode == ExerciseMode.FREE) {
+                if (exercise?.isDurationUnlimited() == true) {
                     _state.value = current.copy(phase = phase.copy(remainingSeconds = phase.remainingSeconds + 1))
                 } else if (phase.remainingSeconds > 1) {
                     val next = phase.remainingSeconds - 1
@@ -375,5 +376,5 @@ class TimerService : Service() {
     }
 
     private fun Exercise.initialExerciseSeconds(): Int =
-        if (mode == ExerciseMode.FREE) 0 else durationSeconds
+        if (isDurationUnlimited()) 0 else durationSeconds
 }

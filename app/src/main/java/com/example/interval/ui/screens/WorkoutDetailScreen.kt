@@ -25,6 +25,7 @@ import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.Workout
 import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
 import dev.marufeuille.intervo.ui.theme.*
 import kotlinx.coroutines.flow.*
@@ -188,15 +189,17 @@ private fun ExerciseRow(
             Text(exercise.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             val summary = when (exercise.mode) {
                 ExerciseMode.TIMED ->
-                    "${exercise.durationSeconds}秒×${exercise.sets} / 休${exercise.restSeconds}秒"
+                    if (exercise.isDurationUnlimited()) {
+                        "自由×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                    } else {
+                        "${exercise.durationSeconds}秒×${exercise.sets} / 休${exercise.restSeconds}秒"
+                    }
                 ExerciseMode.REPS ->
                     if (exercise.isOpenEndedReps()) {
                         "${exercise.durationSeconds}秒×限界×${exercise.sets}set / 休${exercise.restSeconds}秒"
                     } else {
                         "${exercise.durationSeconds}秒×${exercise.effectiveRepsPerSet()}回×${exercise.sets}set / 休${exercise.restSeconds}秒"
                     }
-                ExerciseMode.FREE ->
-                    "フリー×${exercise.sets}set / 休${exercise.restSeconds}秒"
             }
             Text(summary, fontSize = 11.sp, color = TextSecondary)
         }

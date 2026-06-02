@@ -4,6 +4,7 @@ import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
+import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
 
 sealed class TimerPhase {
@@ -64,14 +65,13 @@ data class TimerState(
     val totalSeconds: Int
         get() = exercises.sumOf { ex ->
             val perSet = when (ex.mode) {
-                ExerciseMode.TIMED -> ex.durationSeconds
+                ExerciseMode.TIMED -> if (ex.isDurationUnlimited()) 0 else ex.durationSeconds
                 ExerciseMode.REPS -> if (ex.isOpenEndedReps()) {
                     0
                 } else {
                     val reps = ex.effectiveRepsPerSet()
                     ex.durationSeconds * reps + ex.repRestSeconds * (reps - 1).coerceAtLeast(0)
                 }
-                ExerciseMode.FREE -> 0
             }
             perSet * ex.sets + ex.restSeconds * ex.sets
         }
