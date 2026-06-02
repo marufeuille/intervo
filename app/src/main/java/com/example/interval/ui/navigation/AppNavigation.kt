@@ -1,6 +1,11 @@
 package dev.marufeuille.intervo.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
@@ -30,8 +35,22 @@ object Routes {
 @Composable
 fun AppNavigation() {
     val navController = rememberSwipeDismissableNavController()
+    val currentRoute = remember { mutableStateOf<String?>(null) }
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            currentRoute.value = destination.route
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
+    val isTimerRoute = currentRoute.value == Routes.TIMER
+    BackHandler(enabled = isTimerRoute) {}
 
-    SwipeDismissableNavHost(navController = navController, startDestination = Routes.WORKOUT_SELECT) {
+    SwipeDismissableNavHost(
+        navController = navController,
+        startDestination = Routes.WORKOUT_SELECT,
+        userSwipeEnabled = !isTimerRoute
+    ) {
         composable(Routes.WORKOUT_SELECT) {
             WorkoutSelectScreen(
                 onWorkoutClick = { navController.navigate(Routes.workoutDetail(it)) },

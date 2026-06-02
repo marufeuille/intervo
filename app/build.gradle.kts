@@ -19,8 +19,8 @@ android {
         applicationId = "dev.marufeuille.intervo"
         minSdk = 30
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.5.3"
+        versionCode = 16
+        versionName = "1.5.4"
     }
 
     signingConfigs {

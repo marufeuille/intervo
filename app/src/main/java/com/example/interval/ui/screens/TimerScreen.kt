@@ -326,6 +326,12 @@ private fun FreeSetRecordDialog(
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CompactButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = ButtonDark)
+                ) {
+                    Text("再開", fontSize = 11.sp, color = TextPrimary)
+                }
+                CompactButton(
                     onClick = { onSave(null) },
                     colors = ButtonDefaults.buttonColors(backgroundColor = ButtonDark)
                 ) {
