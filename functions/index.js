@@ -25,6 +25,9 @@ const TABLE_WORKOUT_HISTORY = "workout_history";
 const TABLE_WORKOUT_SNAPSHOT = "workout_snapshot";
 const TABLE_EXERCISE_SNAPSHOT = "exercise_snapshot";
 
+const MAX_STRING_LENGTH = 512;
+const MAX_EXERCISE_SNAPSHOTS = 200;
+
 exports.ingestWorkoutHistory = onRequest(async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
@@ -144,6 +147,9 @@ function parsePayload(body) {
     if (typeof body?.[key] !== type) {
       return {ok: false, message: `Invalid field: ${key}`};
     }
+    if (type === "string" && body[key].length > MAX_STRING_LENGTH) {
+      return {ok: false, message: `Field too long: ${key}`};
+    }
   }
 
   if (!Number.isFinite(body.completed_at_millis) || body.completed_at_millis <= 0) {
@@ -197,7 +203,8 @@ function parseWorkoutSnapshot(rawSnapshot, history) {
   const workoutName = snapshot.workout_name || history.workout_name;
   const sortOrder = snapshot.sort_order;
 
-  if (typeof workoutId !== "string" || typeof workoutName !== "string") {
+  if (typeof workoutId !== "string" || typeof workoutName !== "string" ||
+      workoutId.length > MAX_STRING_LENGTH || workoutName.length > MAX_STRING_LENGTH) {
     return {ok: false, message: "Invalid workout_snapshot fields"};
   }
   if (sortOrder !== undefined && sortOrder !== null && !Number.isInteger(sortOrder)) {
@@ -220,6 +227,9 @@ function parseExerciseSnapshots(rawSnapshots, history) {
   }
   if (!Array.isArray(rawSnapshots)) {
     return {ok: false, message: "Invalid exercise_snapshots"};
+  }
+  if (rawSnapshots.length > MAX_EXERCISE_SNAPSHOTS) {
+    return {ok: false, message: "Too many exercise_snapshots"};
   }
 
   const snapshots = [];
@@ -251,6 +261,9 @@ function parseExerciseSnapshot(snapshot, history, index) {
   for (const [key, type] of Object.entries(required)) {
     if (typeof snapshot[key] !== type) {
       return {ok: false, message: `Invalid exercise_snapshots[${index}].${key}`};
+    }
+    if (type === "string" && snapshot[key].length > MAX_STRING_LENGTH) {
+      return {ok: false, message: `Field too long: exercise_snapshots[${index}].${key}`};
     }
   }
 
@@ -294,18 +307,29 @@ async function ensureTable(datasetId, tableId, schema) {
   const dataset = bigquery.dataset(datasetId);
   const [datasetExists] = await dataset.exists();
   if (!datasetExists) {
-    await bigquery.createDataset(datasetId, {
+    await ignoreAlreadyExists(bigquery.createDataset(datasetId, {
       location: BIGQUERY_LOCATION,
-    });
+    }));
   }
 
   const table = dataset.table(tableId);
   const [tableExists] = await table.exists();
   if (tableExists) return;
 
-  await dataset.createTable(tableId, {
+  await ignoreAlreadyExists(dataset.createTable(tableId, {
     schema,
-  });
+  }));
+}
+
+// 同時リクエストが同じデータセット/テーブルを作成しようとした場合の競合は無視する
+async function ignoreAlreadyExists(promise) {
+  try {
+    await promise;
+  } catch (error) {
+    const alreadyExists = error?.code === 409 ||
+      /already exists/i.test(error?.message || "");
+    if (!alreadyExists) throw error;
+  }
 }
 
 async function upsertHistory(datasetId, record) {
