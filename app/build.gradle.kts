@@ -24,11 +24,14 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file(keystoreProps["storeFile"] as String)
-            storePassword = keystoreProps["storePassword"] as String
-            keyAlias = keystoreProps["keyAlias"] as String
-            keyPassword = keystoreProps["keyPassword"] as String
+        // keystore.properties が無い環境（CI など）では release 署名なしで構成だけ通す
+        if (keystoreProps.isNotEmpty()) {
+            create("release") {
+                storeFile = file(keystoreProps["storeFile"] as String)
+                storePassword = keystoreProps["storePassword"] as String
+                keyAlias = keystoreProps["keyAlias"] as String
+                keyPassword = keystoreProps["keyPassword"] as String
+            }
         }
     }
 
@@ -37,8 +40,9 @@ android {
             applicationIdSuffix = ".debug"
         }
         release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -81,6 +85,8 @@ dependencies {
     implementation(libs.wear.input)
     implementation(libs.wear.ongoing)
     implementation(libs.core.ktx)
+    // registerForActivityResult が要求する fragment 1.3+ を明示（Wear スタックが古い版を解決するため）
+    implementation(libs.fragment.ktx)
     implementation(libs.play.services.wearable)
 
     implementation(libs.room.runtime)
