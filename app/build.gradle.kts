@@ -79,9 +79,13 @@ dependencies {
     implementation(libs.wear.compose.navigation)
     implementation(libs.wear)
     implementation(libs.wear.input)
+    implementation(libs.wear.ongoing)
+    implementation(libs.core.ktx)
     implementation(libs.play.services.wearable)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    testImplementation(libs.junit)
 }

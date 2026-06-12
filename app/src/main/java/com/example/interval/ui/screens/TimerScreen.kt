@@ -34,6 +34,7 @@ fun TimerScreen(
     workoutId: String,
     onComplete: (totalSeconds: Int) -> Unit,
     onStop: () -> Unit,
+    resume: Boolean = false,
     vm: TimerViewModel = viewModel()
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -43,7 +44,7 @@ fun TimerScreen(
 
     LaunchedEffect(workoutId) {
         vm.bindService()
-        vm.start(workoutId)
+        vm.start(workoutId, resume)
     }
 
     LaunchedEffect(state.phase) {

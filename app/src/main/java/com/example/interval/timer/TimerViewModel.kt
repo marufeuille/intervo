@@ -8,21 +8,12 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import dev.marufeuille.intervo.data.AppDatabase
-import dev.marufeuille.intervo.data.Exercise
-import dev.marufeuille.intervo.data.WorkoutRepository
-import dev.marufeuille.intervo.sync.WorkoutHistorySyncClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class TimerViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = WorkoutRepository(
-        AppDatabase.getInstance(application),
-        WorkoutHistorySyncClient(application)
-    )
 
     private val _state = MutableStateFlow(TimerState())
     val state: StateFlow<TimerState> = _state.asStateFlow()
@@ -31,31 +22,17 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     val isAmbient: StateFlow<Boolean> = _isAmbient.asStateFlow()
 
     private var timerService: TimerService? = null
-    private var pendingExercises: List<Exercise>? = null
-    private var pendingWorkoutName: String = ""
-
-    private var currentWorkoutId = ""
-    private var currentWorkoutName = ""
-    private var currentWorkoutSortOrder: Int? = null
-    private var historySaved = false
+    private var pendingStart: Pair<String, Boolean>? = null
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             timerService = (binder as TimerService.LocalBinder).getService()
             viewModelScope.launch {
-                var prevPhase: TimerPhase = TimerPhase.Idle
-                timerService?.state?.collect { newState ->
-                    if (prevPhase !is TimerPhase.Complete && newState.phase is TimerPhase.Complete && !historySaved) {
-                        historySaved = true
-                        saveHistory(newState)
-                    }
-                    prevPhase = newState.phase
-                    _state.value = newState
-                }
+                timerService?.state?.collect { _state.value = it }
             }
-            pendingExercises?.let {
-                timerService?.start(it)
-                pendingExercises = null
+            pendingStart?.let { (workoutId, resume) ->
+                timerService?.start(workoutId, resume)
+                pendingStart = null
             }
         }
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -74,22 +51,12 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: IllegalArgumentException) {}
     }
 
-    fun start(workoutId: String) {
-        currentWorkoutId = workoutId
-        historySaved = false
-        viewModelScope.launch {
-            val workout = repository.getWorkoutById(workoutId)
-            currentWorkoutName = workout?.name ?: ""
-            currentWorkoutSortOrder = workout?.sortOrder
-            val exercises = repository.getExercisesOnce(workoutId)
-            if (exercises.isEmpty()) return@launch
-            val svc = timerService
-            if (svc != null) {
-                svc.start(exercises)
-            } else {
-                pendingExercises = exercises
-                pendingWorkoutName = currentWorkoutName
-            }
+    fun start(workoutId: String, resume: Boolean = false) {
+        val svc = timerService
+        if (svc != null) {
+            svc.start(workoutId, resume)
+        } else {
+            pendingStart = workoutId to resume
         }
     }
 
@@ -102,20 +69,4 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun stop() { timerService?.stop() }
 
     fun setAmbient(ambient: Boolean) { _isAmbient.value = ambient }
-
-    private fun saveHistory(state: TimerState) {
-        viewModelScope.launch {
-            runCatching {
-                repository.addHistory(
-                    workoutId = currentWorkoutId,
-                    workoutName = currentWorkoutName,
-                    totalSeconds = state.elapsedSeconds,
-                    exerciseCount = state.exercises.size,
-                    workoutSortOrder = currentWorkoutSortOrder,
-                    exercises = state.exercises,
-                    freeSetRecords = state.freeSetRecords,
-                )
-            }
-        }
-    }
 }

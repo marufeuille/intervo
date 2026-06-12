@@ -18,7 +18,7 @@ object Routes {
     const val WORKOUT_EDIT = "workout_edit?workoutId={workoutId}"
     const val WORKOUT_DETAIL = "workout_detail/{workoutId}"
     const val EXERCISE_EDIT = "exercise_edit/{workoutId}?exerciseId={exerciseId}"
-    const val TIMER = "timer/{workoutId}"
+    const val TIMER = "timer/{workoutId}?resume={resume}"
     const val COMPLETION = "completion/{totalSeconds}"
     const val HISTORY = "history"
 
@@ -28,7 +28,7 @@ object Routes {
     fun exerciseEdit(workoutId: String, exerciseId: String? = null) =
         if (exerciseId != null) "exercise_edit/$workoutId?exerciseId=$exerciseId"
         else "exercise_edit/$workoutId"
-    fun timer(workoutId: String) = "timer/$workoutId"
+    fun timer(workoutId: String, resume: Boolean = false) = "timer/$workoutId?resume=$resume"
     fun completion(totalSeconds: Int) = "completion/$totalSeconds"
 }
 
@@ -55,7 +55,10 @@ fun AppNavigation() {
             WorkoutSelectScreen(
                 onWorkoutClick = { navController.navigate(Routes.workoutDetail(it)) },
                 onAddWorkout = { navController.navigate(Routes.workoutEdit()) },
-                onHistory = { navController.navigate(Routes.HISTORY) }
+                onHistory = { navController.navigate(Routes.HISTORY) },
+                onResumeWorkout = { workoutId ->
+                    navController.navigate(Routes.timer(workoutId, resume = true))
+                }
             )
         }
         composable(
@@ -99,11 +102,15 @@ fun AppNavigation() {
             )
         }
         composable(
-            route = "timer/{workoutId}",
-            arguments = listOf(navArgument("workoutId") { type = NavType.StringType })
+            route = Routes.TIMER,
+            arguments = listOf(
+                navArgument("workoutId") { type = NavType.StringType },
+                navArgument("resume") { type = NavType.BoolType; defaultValue = false }
+            )
         ) { back ->
             TimerScreen(
                 workoutId = back.arguments!!.getString("workoutId")!!,
+                resume = back.arguments!!.getBoolean("resume"),
                 onComplete = { totalSeconds ->
                     navController.navigate(Routes.completion(totalSeconds)) {
                         popUpTo(Routes.WORKOUT_SELECT)
