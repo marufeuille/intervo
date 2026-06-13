@@ -2,6 +2,7 @@ package dev.marufeuille.intervo.timer
 
 import android.content.Context
 import android.util.Log
+import dev.marufeuille.intervo.BuildConfig
 import androidx.health.services.client.ExerciseUpdateCallback
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.data.Availability
@@ -36,7 +37,7 @@ class HeartRateManager(context: Context) {
             val samples = update.latestMetrics.getData(DataType.HEART_RATE_BPM)
             samples.lastOrNull()?.let {
                 val bpm = it.value.toInt()
-                Log.d(TAG, "hr sample: $bpm")
+                debugLog("hr sample: $bpm")
                 _heartRate.value = bpm
             }
         }
@@ -44,15 +45,15 @@ class HeartRateManager(context: Context) {
         override fun onLapSummaryReceived(lapSummary: ExerciseLapSummary) {}
 
         override fun onRegistered() {
-            Log.i(TAG, "exercise update callback registered")
+            debugLog("exercise update callback registered")
         }
 
         override fun onRegistrationFailed(throwable: Throwable) {
-            Log.w(TAG, "exercise registration failed", throwable)
+            debugLog("exercise registration failed", throwable)
         }
 
         override fun onAvailabilityChanged(dataType: DataType<*, *>, availability: Availability) {
-            Log.i(TAG, "availability changed: $dataType -> $availability")
+            debugLog("availability changed: $dataType -> $availability")
             if (dataType == DataType.HEART_RATE_BPM &&
                 availability is DataTypeAvailability &&
                 availability != DataTypeAvailability.AVAILABLE
@@ -67,12 +68,12 @@ class HeartRateManager(context: Context) {
         val started = runCatching {
             val capabilities = exerciseClient.getCapabilitiesAsync().await()
             if (ExerciseType.WORKOUT !in capabilities.supportedExerciseTypes) {
-                Log.w(TAG, "WORKOUT exercise type not supported")
+                debugLog("WORKOUT exercise type not supported")
                 return
             }
             val exerciseCapabilities = capabilities.getExerciseTypeCapabilities(ExerciseType.WORKOUT)
             if (DataType.HEART_RATE_BPM !in exerciseCapabilities.supportedDataTypes) {
-                Log.w(TAG, "HEART_RATE_BPM not supported for WORKOUT")
+                debugLog("HEART_RATE_BPM not supported for WORKOUT")
                 return
             }
 
@@ -89,8 +90,8 @@ class HeartRateManager(context: Context) {
                 .setIsGpsEnabled(false)
                 .build()
             exerciseClient.startExerciseAsync(config).await()
-            Log.i(TAG, "exercise started")
-        }.onFailure { Log.w(TAG, "failed to start exercise", it) }.isSuccess
+            debugLog("exercise started")
+        }.onFailure { debugLog("failed to start exercise", it) }.isSuccess
         active = started
     }
 
@@ -103,5 +104,10 @@ class HeartRateManager(context: Context) {
 
     companion object {
         private const val TAG = "HeartRateManager"
+
+        // Debug ビルドのみログ出力する（Release では何もしない）
+        private fun debugLog(message: String, throwable: Throwable? = null) {
+            if (BuildConfig.DEBUG) Log.d(TAG, message, throwable)
+        }
     }
 }
