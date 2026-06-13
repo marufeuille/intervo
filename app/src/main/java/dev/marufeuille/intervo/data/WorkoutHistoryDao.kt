@@ -21,6 +21,9 @@ interface WorkoutHistoryDao {
     @Insert
     suspend fun insertFreeSetRecords(records: List<FreeSetRecord>)
 
+    @Insert
+    suspend fun insertExerciseHrRecords(records: List<ExerciseHrRecord>)
+
     @Query("SELECT * FROM free_set_records WHERE historyId = :historyId ORDER BY sortOrder")
     fun getFreeSetRecords(historyId: String): Flow<List<FreeSetRecord>>
 }

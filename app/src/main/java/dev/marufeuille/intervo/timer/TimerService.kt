@@ -44,6 +44,7 @@ class TimerService : Service() {
     private lateinit var snapshotStore: TimerSnapshotStore
     private lateinit var heartRateManager: HeartRateManager
     private var heartRateJob: Job? = null
+    private val hrAccumulator = HrAccumulator()
     private var lastPersistedKey: String? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtElapsedMillis: Long = 0L
@@ -139,13 +140,28 @@ class TimerService : Service() {
 
     private fun startHeartRate() {
         heartRateJob?.cancel()
+        hrAccumulator.reset()
         heartRateJob = serviceScope.launch {
             heartRateManager.start()
             heartRateManager.heartRate.collect { hr ->
+                if (hr != null) {
+                    val phase = _state.value.phase
+                    hrAccumulator.record(hr, phase.exerciseIndexOrNull(), phase.exerciseName())
+                }
                 _state.value = _state.value.copy(currentHeartRate = hr)
             }
         }
     }
+
+    private fun TimerPhase.exerciseIndexOrNull(): Int? = when (this) {
+        is TimerPhase.ExercisePhase -> exerciseIndex
+        is TimerPhase.RepRestPhase -> exerciseIndex
+        is TimerPhase.RestPhase -> exerciseIndex
+        else -> null
+    }
+
+    private fun TimerPhase.exerciseName(): String =
+        exerciseIndexOrNull()?.let { _state.value.exercises.getOrNull(it)?.name } ?: ""
 
     private fun stopHeartRate() {
         heartRateJob?.cancel()
@@ -257,6 +273,10 @@ class TimerService : Service() {
                     workoutSortOrder = workoutSortOrder,
                     exercises = finalState.exercises,
                     freeSetRecords = finalState.freeSetRecords,
+                    startHr = hrAccumulator.startHr(),
+                    avgHr = hrAccumulator.avgHr(),
+                    maxHr = hrAccumulator.maxHr(),
+                    exerciseHrRecords = hrAccumulator.exerciseRecords(),
                 )
             }
             withContext(Dispatchers.IO) { snapshotStore.clear() }

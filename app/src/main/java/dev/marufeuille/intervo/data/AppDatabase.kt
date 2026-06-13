@@ -26,8 +26,14 @@ class ExerciseModeConverter {
 }
 
 @Database(
-    entities = [Workout::class, Exercise::class, WorkoutHistory::class, FreeSetRecord::class],
-    version = 6,
+    entities = [
+        Workout::class,
+        Exercise::class,
+        WorkoutHistory::class,
+        FreeSetRecord::class,
+        ExerciseHrRecord::class,
+    ],
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(ExerciseModeConverter::class)
@@ -93,6 +99,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE workout_history ADD COLUMN startHr INTEGER")
+                db.execSQL("ALTER TABLE workout_history ADD COLUMN avgHr INTEGER")
+                db.execSQL("ALTER TABLE workout_history ADD COLUMN maxHr INTEGER")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS exercise_hr_records (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        historyId TEXT NOT NULL,
+                        exerciseIndex INTEGER NOT NULL,
+                        exerciseName TEXT NOT NULL,
+                        startHr INTEGER NOT NULL,
+                        endHr INTEGER NOT NULL,
+                        sortOrder INTEGER NOT NULL,
+                        FOREIGN KEY(historyId) REFERENCES workout_history(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_exercise_hr_records_historyId ON exercise_hr_records(historyId)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
@@ -100,7 +127,10 @@ abstract class AppDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context) =
             Room.databaseBuilder(context, AppDatabase::class.java, "interval.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                    MIGRATION_6_7,
+                )
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {

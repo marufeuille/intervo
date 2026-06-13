@@ -19,6 +19,7 @@ import dev.marufeuille.intervo.data.FreeSetRecord
 import dev.marufeuille.intervo.data.WorkoutHistoryWithFreeSetRecords
 import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.ui.theme.CompletionGreen
+import dev.marufeuille.intervo.ui.theme.ExerciseOrange
 import dev.marufeuille.intervo.ui.theme.TextPrimary
 import dev.marufeuille.intervo.ui.theme.TextSecondary
 import kotlinx.coroutines.flow.SharingStarted
@@ -86,6 +87,21 @@ fun HistoryScreen(vm: HistoryViewModel = viewModel()) {
                             Text(dateLabel, fontSize = 11.sp, color = TextSecondary)
                             Text("·", fontSize = 11.sp, color = TextSecondary)
                             Text(timeLabel, fontSize = 11.sp, color = CompletionGreen.copy(alpha = 0.8f))
+                        }
+                        if (h.avgHr != null) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "♥ 平均${h.avgHr} / 最大${h.maxHr ?: h.avgHr}",
+                                fontSize = 10.sp,
+                                color = ExerciseOrange.copy(alpha = 0.9f)
+                            )
+                            item.exerciseHrRecords.sortedBy { it.sortOrder }.take(3).forEach { hr ->
+                                Text(
+                                    "${hr.exerciseName} ${hr.startHr}→${hr.endHr}",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
                         }
                         if (item.freeSetRecords.isNotEmpty()) {
                             Spacer(Modifier.height(2.dp))

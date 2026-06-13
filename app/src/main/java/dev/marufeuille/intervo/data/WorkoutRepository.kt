@@ -84,12 +84,19 @@ class WorkoutRepository(
         workoutSortOrder: Int? = null,
         exercises: List<Exercise> = emptyList(),
         freeSetRecords: List<FreeSetRecordInput> = emptyList(),
+        startHr: Int? = null,
+        avgHr: Int? = null,
+        maxHr: Int? = null,
+        exerciseHrRecords: List<ExerciseHrInput> = emptyList(),
     ): WorkoutHistory {
         val history = WorkoutHistory(
             workoutId = workoutId,
             workoutName = workoutName,
             totalSeconds = totalSeconds,
-            exerciseCount = exerciseCount
+            exerciseCount = exerciseCount,
+            startHr = startHr,
+            avgHr = avgHr,
+            maxHr = maxHr
         )
         db.workoutHistoryDao().insert(history)
         if (freeSetRecords.isNotEmpty()) {
@@ -102,6 +109,20 @@ class WorkoutRepository(
                         setNumber = record.setNumber,
                         durationSeconds = record.durationSeconds,
                         reps = record.reps,
+                        sortOrder = record.sortOrder
+                    )
+                }
+            )
+        }
+        if (exerciseHrRecords.isNotEmpty()) {
+            db.workoutHistoryDao().insertExerciseHrRecords(
+                exerciseHrRecords.map { record ->
+                    ExerciseHrRecord(
+                        historyId = history.id,
+                        exerciseIndex = record.exerciseIndex,
+                        exerciseName = record.exerciseName,
+                        startHr = record.startHr,
+                        endHr = record.endHr,
                         sortOrder = record.sortOrder
                     )
                 }

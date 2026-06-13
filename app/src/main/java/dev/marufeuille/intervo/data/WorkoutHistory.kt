@@ -13,7 +13,10 @@ data class WorkoutHistory(
     val workoutName: String,
     val completedAt: Long = System.currentTimeMillis(),
     val totalSeconds: Int,
-    val exerciseCount: Int
+    val exerciseCount: Int,
+    val startHr: Int? = null,
+    val avgHr: Int? = null,
+    val maxHr: Int? = null
 )
 
 data class WorkoutHistoryWithFreeSetRecords(
@@ -22,5 +25,10 @@ data class WorkoutHistoryWithFreeSetRecords(
         parentColumn = "id",
         entityColumn = "historyId"
     )
-    val freeSetRecords: List<FreeSetRecord>
+    val freeSetRecords: List<FreeSetRecord>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "historyId"
+    )
+    val exerciseHrRecords: List<ExerciseHrRecord>
 )
