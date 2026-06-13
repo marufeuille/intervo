@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +21,9 @@ import dev.marufeuille.intervo.data.isOpenEndedReps
 import dev.marufeuille.intervo.timer.TimerPhase
 import dev.marufeuille.intervo.timer.TimerState
 import dev.marufeuille.intervo.ui.theme.*
+
+/** 休憩/レップのスキップボタン（アイコンのみでテキストが無いため E2E 用に testTag を付与） */
+internal const val SKIP_BUTTON_TAG = "timerSkipButton"
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -181,7 +185,9 @@ private fun FinishSetButton(onClick: () -> Unit) {
 private fun SkipButton(onClick: () -> Unit) {
     CompactButton(
         onClick = onClick,
-        modifier = Modifier.size(width = 48.dp, height = 28.dp),
+        modifier = Modifier
+            .size(width = 48.dp, height = 28.dp)
+            .testTag(SKIP_BUTTON_TAG),
         colors = ButtonDefaults.buttonColors(backgroundColor = ButtonDark)
     ) {
         FastForwardIcon(
