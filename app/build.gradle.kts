@@ -85,6 +85,8 @@ dependencies {
     implementation(libs.core.ktx)
     // registerForActivityResult が要求する fragment 1.3+ を明示（Wear スタックが古い版を解決するため）
     implementation(libs.fragment.ktx)
+    implementation(libs.health.services.client)
+    implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.play.services.wearable)
 
     implementation(libs.room.runtime)

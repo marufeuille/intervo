@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <!-- Wear OS 5+ は心拍取得に Health の粒度権限を要求する -->
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
 
     <uses-feature android:name="android.hardware.type.watch" />
 

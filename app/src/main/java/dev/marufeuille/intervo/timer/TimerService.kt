@@ -42,6 +42,8 @@ class TimerService : Service() {
     private lateinit var speechManager: SpeechManager
     private lateinit var repository: WorkoutRepository
     private lateinit var snapshotStore: TimerSnapshotStore
+    private lateinit var heartRateManager: HeartRateManager
+    private var heartRateJob: Job? = null
     private var lastPersistedKey: String? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtElapsedMillis: Long = 0L
@@ -63,6 +65,7 @@ class TimerService : Service() {
             WorkoutHistorySyncClient(applicationContext)
         )
         snapshotStore = TimerSnapshotStore(applicationContext)
+        heartRateManager = HeartRateManager(applicationContext)
     }
 
     override fun onBind(intent: Intent): IBinder = binder
@@ -77,6 +80,7 @@ class TimerService : Service() {
         if (_runningWorkoutId.value == activeWorkoutId) {
             _runningWorkoutId.value = null
         }
+        stopHeartRate()
         releaseWakeLock()
         speechManager.shutdown()
         serviceScope.cancel()
@@ -107,6 +111,7 @@ class TimerService : Service() {
             lastPersistedKey = null
             promoteToForeground()
             acquireWakeLock()
+            startHeartRate()
             startedAtElapsedMillis = SystemClock.elapsedRealtime()
             pausedAtElapsedMillis = 0L
             totalPausedMillis = 0L
@@ -124,11 +129,28 @@ class TimerService : Service() {
         lastPersistedKey = null
         promoteToForeground()
         acquireWakeLock()
+        startHeartRate()
         startedAtElapsedMillis = SystemClock.elapsedRealtime() - snapshot.state.elapsedSeconds * 1000L
         pausedAtElapsedMillis = 0L
         totalPausedMillis = 0L
         _state.value = snapshot.state
         startCountdown()
+    }
+
+    private fun startHeartRate() {
+        heartRateJob?.cancel()
+        heartRateJob = serviceScope.launch {
+            heartRateManager.start()
+            heartRateManager.heartRate.collect { hr ->
+                _state.value = _state.value.copy(currentHeartRate = hr)
+            }
+        }
+    }
+
+    private fun stopHeartRate() {
+        heartRateJob?.cancel()
+        heartRateJob = null
+        serviceScope.launch { heartRateManager.stop() }
     }
 
     fun pause() {
@@ -155,6 +177,7 @@ class TimerService : Service() {
 
     fun stop() {
         countdownJob?.cancel()
+        stopHeartRate()
         releaseWakeLock()
         startedAtElapsedMillis = 0L
         pausedAtElapsedMillis = 0L
@@ -217,6 +240,7 @@ class TimerService : Service() {
     private fun finishWorkout(finalState: TimerState) {
         val workoutId = activeWorkoutId
         _runningWorkoutId.value = null
+        stopHeartRate()
         if (historySaved || workoutId == null) {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()

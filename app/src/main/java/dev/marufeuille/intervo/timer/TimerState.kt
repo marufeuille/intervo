@@ -34,7 +34,8 @@ data class TimerState(
     val phase: TimerPhase = TimerPhase.Idle,
     val isPaused: Boolean = false,
     val elapsedSeconds: Int = 0,
-    val freeSetRecords: List<FreeSetRecordInput> = emptyList()
+    val freeSetRecords: List<FreeSetRecordInput> = emptyList(),
+    val currentHeartRate: Int? = null
 ) {
     val currentExercise: Exercise?
         get() = when (val p = phase) {

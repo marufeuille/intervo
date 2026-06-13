@@ -51,6 +51,8 @@ class MainActivity : ComponentActivity() {
     private fun requestTimerPermissions() {
         val needed = buildList {
             add(Manifest.permission.ACTIVITY_RECOGNITION)
+            add(Manifest.permission.BODY_SENSORS)
+            add(PERMISSION_READ_HEART_RATE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -60,5 +62,10 @@ class MainActivity : ComponentActivity() {
         if (needed.isNotEmpty()) {
             permissionLauncher.launch(needed.toTypedArray())
         }
+    }
+
+    private companion object {
+        // SDK 定数が無いため文字列で指定（Wear OS 5+ の心拍読み取り権限）
+        const val PERMISSION_READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
     }
 }

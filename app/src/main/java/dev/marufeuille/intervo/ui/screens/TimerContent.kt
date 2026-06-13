@@ -87,6 +87,14 @@ internal fun ActiveTimerContent(
                 )
                 Text(" 秒", fontSize = 14.sp, color = TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
             }
+            state.currentHeartRate?.let { hr ->
+                Text(
+                    text = "♥ $hr",
+                    fontSize = 13.sp,
+                    color = ExerciseOrange,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             if (isOpenEndedRepSet) {
                 FinishSetButton(onClick = onFinishOpenEndedRepSet)
             } else if (isRestLike) {
