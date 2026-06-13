@@ -91,6 +91,13 @@ dependencies {
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.play.services.wearable)
 
+    // Wear OS Tile + Complication
+    implementation(libs.wear.tiles)
+    implementation(libs.wear.protolayout)
+    implementation(libs.wear.protolayout.material)
+    implementation(libs.wear.complications.datasource)
+    debugImplementation(libs.wear.tiles.tooling)
+
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)

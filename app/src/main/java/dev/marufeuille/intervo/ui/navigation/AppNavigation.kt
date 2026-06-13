@@ -3,6 +3,7 @@ package dev.marufeuille.intervo.ui.navigation
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.navigation.NavController
@@ -33,9 +34,16 @@ object Routes {
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(initialWorkoutId: String? = null) {
     val navController = rememberSwipeDismissableNavController()
     val currentRoute = remember { mutableStateOf<String?>(null) }
+
+    // Tile / Complication からワークアウト ID 付きで起動された場合は、その詳細画面へ遷移する
+    LaunchedEffect(initialWorkoutId) {
+        if (initialWorkoutId != null) {
+            navController.navigate(Routes.workoutDetail(initialWorkoutId))
+        }
+    }
     DisposableEffect(navController) {
         val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
             currentRoute.value = destination.route
