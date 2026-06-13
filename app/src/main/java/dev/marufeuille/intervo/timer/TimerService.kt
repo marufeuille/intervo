@@ -146,7 +146,12 @@ class TimerService : Service() {
             heartRateManager.heartRate.collect { hr ->
                 if (hr != null) {
                     val phase = _state.value.phase
-                    hrAccumulator.record(hr, phase.exerciseIndexOrNull(), phase.exerciseName())
+                    hrAccumulator.record(
+                        hr = hr,
+                        exerciseIndex = phase.exerciseIndexOrNull(),
+                        exerciseName = phase.exerciseName(),
+                        timestampMillis = System.currentTimeMillis()
+                    )
                 }
                 _state.value = _state.value.copy(currentHeartRate = hr)
             }
@@ -277,6 +282,7 @@ class TimerService : Service() {
                     avgHr = hrAccumulator.avgHr(),
                     maxHr = hrAccumulator.maxHr(),
                     exerciseHrRecords = hrAccumulator.exerciseRecords(),
+                    hrSamples = hrAccumulator.samples(),
                 )
             }
             withContext(Dispatchers.IO) { snapshotStore.clear() }

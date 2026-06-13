@@ -3,6 +3,7 @@ package dev.marufeuille.intervo.data
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import dev.marufeuille.intervo.sync.WorkoutHistorySyncClient
+import dev.marufeuille.intervo.timer.HrSample
 
 
 class WorkoutRepository(
@@ -88,6 +89,7 @@ class WorkoutRepository(
         avgHr: Int? = null,
         maxHr: Int? = null,
         exerciseHrRecords: List<ExerciseHrInput> = emptyList(),
+        hrSamples: List<HrSample> = emptyList(),
     ): WorkoutHistory {
         val history = WorkoutHistory(
             workoutId = workoutId,
@@ -128,7 +130,7 @@ class WorkoutRepository(
                 }
             )
         }
-        historySyncClient?.send(history, workoutSortOrder, exercises)
+        historySyncClient?.send(history, workoutSortOrder, exercises, exerciseHrRecords, hrSamples)
         return history
     }
 }

@@ -67,9 +67,45 @@ class HrAccumulatorTest {
     @Test
     fun `reset clears everything`() {
         val acc = HrAccumulator()
-        acc.record(60, 0, "x")
+        acc.record(60, 0, "x", timestampMillis = 1000)
         acc.reset()
         assertNull(acc.startHr())
         assertEquals(emptyList<Any>(), acc.exerciseRecords())
+        assertEquals(emptyList<Any>(), acc.samples())
+    }
+
+    @Test
+    fun `no samples when timestamp omitted`() {
+        val acc = HrAccumulator()
+        acc.record(60, 0, "x")
+        acc.record(70, 0, "x")
+        assertEquals(emptyList<Any>(), acc.samples())
+    }
+
+    @Test
+    fun `samples downsampled to interval`() {
+        val acc = HrAccumulator()
+        val base = 1_000_000L
+        // 1 秒間隔で 12 秒ぶん投入 → 5 秒間隔なら 0,5,10 秒の 3 点
+        for (i in 0..12) {
+            acc.record(60 + i, 0, "x", timestampMillis = base + i * 1000L)
+        }
+        val samples = acc.samples()
+        assertEquals(3, samples.size)
+        assertEquals(base, samples[0].timeMillis)
+        assertEquals(base + 5000, samples[1].timeMillis)
+        assertEquals(base + 10000, samples[2].timeMillis)
+        assertEquals(60, samples[0].bpm)
+    }
+
+    @Test
+    fun `samples capped at max`() {
+        val acc = HrAccumulator()
+        var t = 0L
+        repeat(HrAccumulator.MAX_SAMPLES + 50) {
+            t += HrAccumulator.SAMPLE_INTERVAL_MS
+            acc.record(70, 0, "x", timestampMillis = t)
+        }
+        assertEquals(HrAccumulator.MAX_SAMPLES, acc.samples().size)
     }
 }
