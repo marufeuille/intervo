@@ -1,5 +1,6 @@
 package dev.marufeuille.intervo
 
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
@@ -17,6 +18,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.marufeuille.intervo.data.AppDatabase
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.WorkoutRepository
+import dev.marufeuille.intervo.timer.TimerService
 import dev.marufeuille.intervo.ui.navigation.AppNavigation
 import dev.marufeuille.intervo.ui.theme.IntervalTheme
 import kotlinx.coroutines.runBlocking
@@ -47,7 +49,11 @@ class WorkoutCreationE2ETest {
     )
 
     @Before
-    fun resetDatabase() {
+    fun resetState() {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        // 直前のテストが残したタイマーサービスを停止（runningWorkoutId のリークで
+        // 次のテストが自動再開ダイアログに飛ぶのを防ぐ）
+        ctx.startService(Intent(ctx, TimerService::class.java).setAction(TimerService.ACTION_STOP))
         // 各テストを決定的にするため、毎回 Room を空にする（シングルトン跨ぎでも確実）
         db.clearAllTables()
     }
@@ -56,9 +62,9 @@ class WorkoutCreationE2ETest {
         compose.setContent { IntervalTheme { AppNavigation() } }
     }
 
-    /** テキストが表示されるまで待つヘルパー（DB→Flow 反映は非同期なため） */
-    private fun awaitText(text: String, substring: Boolean = false) {
-        compose.waitUntil(timeoutMillis = 5_000) {
+    /** テキストが表示されるまで待つヘルパー（DB→Flow 反映やタイマー進行は非同期なため） */
+    private fun awaitText(text: String, substring: Boolean = false, timeoutMillis: Long = 5_000) {
+        compose.waitUntil(timeoutMillis = timeoutMillis) {
             compose.onAllNodesWithText(text, substring = substring).fetchSemanticsNodes().isNotEmpty()
         }
     }
@@ -149,5 +155,82 @@ class WorkoutCreationE2ETest {
             compose.onAllNodesWithText("削除対象").fetchSemanticsNodes().isEmpty()
         }
         compose.onNodeWithText("ワークアウト").assertIsDisplayed()
+    }
+
+    @Test
+    fun ワークアウトを開始して中断すると一覧に戻る() {
+        runBlocking {
+            val repo = WorkoutRepository(db)
+            val workout = repo.addWorkout("脚トレ")
+            repo.addExercise(
+                workoutId = workout.id,
+                name = "スクワット",
+                mode = ExerciseMode.TIMED,
+                durationSeconds = 60,
+                sets = 2,
+                restSeconds = 10,
+                repsPerSet = 1,
+                repRestSeconds = 0,
+            )
+        }
+
+        launchApp()
+
+        // 一覧 → 詳細 → スタート
+        awaitText("脚トレ")
+        compose.onNodeWithText("脚トレ").performClick()
+        awaitText("スタート", substring = true)
+        compose.onNodeWithText("スタート", substring = true).performClick()
+
+        // タイマー画面で種目名が出る＝TimerService が起動してエクササイズ中（権限が無くても
+        // promoteToForeground は runCatching で握られ、カウントダウンは継続する）
+        awaitText("スクワット")
+
+        // 長押し → 中断ダイアログ → 「中断」
+        compose.onRoot().performTouchInput { longClick() }
+        awaitText("中断しますか？")
+        compose.onNodeWithText("中断").performClick()
+
+        // 一覧に戻る（stop() が同期で runningWorkoutId を null にするので自動再開しない）
+        awaitText("ワークアウト")
+        compose.onNodeWithText("ワークアウト").assertIsDisplayed()
+    }
+
+    @Test
+    fun 短いワークアウトを完走すると完了画面が出て履歴に残る() {
+        runBlocking {
+            val repo = WorkoutRepository(db)
+            val workout = repo.addWorkout("朝ルーティン")
+            // すぐ終わるよう 1 秒・1 セットの種目にする
+            repo.addExercise(
+                workoutId = workout.id,
+                name = "深呼吸",
+                mode = ExerciseMode.TIMED,
+                durationSeconds = 1,
+                sets = 1,
+                restSeconds = 0,
+                repsPerSet = 1,
+                repRestSeconds = 0,
+            )
+        }
+
+        launchApp()
+
+        awaitText("朝ルーティン")
+        compose.onNodeWithText("朝ルーティン").performClick()
+        awaitText("スタート", substring = true)
+        compose.onNodeWithText("スタート", substring = true).performClick()
+
+        // 数秒で完走 → 完了画面
+        awaitText("完了", substring = true, timeoutMillis = 15_000)
+        compose.onNodeWithText("閉じる").performClick()
+
+        // 一覧に戻る → 履歴を開くと完了した記録が残っている
+        awaitText("ワークアウト")
+        compose.onRoot().performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        compose.onNodeWithText("履歴").performClick()
+        awaitText("朝ルーティン")
+        compose.onNodeWithText("朝ルーティン").assertIsDisplayed()
     }
 }
