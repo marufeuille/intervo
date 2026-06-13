@@ -16,7 +16,9 @@ import dev.marufeuille.intervo.data.*
 import dev.marufeuille.intervo.timer.VibratePattern
 import dev.marufeuille.intervo.timer.VibrationManager
 import dev.marufeuille.intervo.ui.theme.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ExerciseEditScreen(
@@ -149,7 +151,8 @@ fun ExerciseEditScreen(
                     onClick = {
                         scope.launch {
                             if (vm.save()) {
-                                onSaved()
+                                // 保存後の navigate は必ずメインスレッドで行う
+                                withContext(Dispatchers.Main) { onSaved() }
                             } else {
                                 vibrator.vibrate(VibratePattern.ERROR)
                                 listState.animateScrollToItem(0)
