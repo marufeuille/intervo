@@ -21,6 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,9 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
+import dev.marufeuille.intervo.companion.health.HealthConnectWriter
 import dev.marufeuille.intervo.companion.sync.CompanionRepository
 import java.time.Instant
 import java.time.ZoneId
@@ -45,6 +48,12 @@ fun CompanionApp(vm: CompanionViewModel = viewModel()) {
     val isSyncing by vm.isSyncing.collectAsStateWithLifecycle()
     val statusMessage by vm.statusMessage.collectAsStateWithLifecycle()
     val authUid by vm.authUid.collectAsStateWithLifecycle()
+    val hcPermitted by vm.healthConnectPermitted.collectAsStateWithLifecycle()
+    val hcStatus by vm.healthConnectStatus.collectAsStateWithLifecycle()
+
+    val hcPermissionLauncher = rememberLauncherForActivityResult(
+        contract = PermissionController.createRequestPermissionResultContract()
+    ) { vm.onHealthConnectPermissionResult() }
 
     Scaffold { padding ->
         LazyColumn(
@@ -56,6 +65,14 @@ fun CompanionApp(vm: CompanionViewModel = viewModel()) {
         ) {
             item {
                 Header(pendingCount = pendingCount)
+            }
+            item {
+                HealthConnectPanel(
+                    available = vm.healthConnectAvailable,
+                    permitted = hcPermitted,
+                    status = hcStatus,
+                    onConnect = { hcPermissionLauncher.launch(HealthConnectWriter.PERMISSIONS) },
+                )
             }
             item {
                 SyncPanel(
@@ -168,6 +185,43 @@ private fun SyncPanel(
                     enabled = !isSyncing && pendingCount > 0
                 ) {
                     Text(if (isSyncing) "送信中" else "送信")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HealthConnectPanel(
+    available: Boolean,
+    permitted: Boolean,
+    status: String,
+    onConnect: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Health Connect 連携",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(onClick = onConnect, enabled = available) {
+                    Text(if (permitted) "再連携" else "連携する")
                 }
             }
         }

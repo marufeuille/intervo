@@ -25,4 +25,10 @@ interface CompanionWorkoutHistoryDao {
 
     @Query("UPDATE companion_workout_history SET syncError = :message, syncAttempts = syncAttempts + 1, lastSyncAttemptAt = :attemptedAt WHERE id = :id")
     suspend fun markSyncError(id: String, message: String, attemptedAt: Long)
+
+    @Query("SELECT * FROM companion_workout_history WHERE healthConnectWrittenAt IS NULL ORDER BY completedAt ASC")
+    suspend fun getPendingHealthConnect(): List<CompanionWorkoutHistory>
+
+    @Query("UPDATE companion_workout_history SET healthConnectWrittenAt = :writtenAt WHERE id = :id")
+    suspend fun markHealthConnectWritten(id: String, writtenAt: Long)
 }

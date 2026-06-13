@@ -84,6 +84,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
 
     implementation(libs.play.services.wearable)
+    implementation(libs.health.connect.client)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

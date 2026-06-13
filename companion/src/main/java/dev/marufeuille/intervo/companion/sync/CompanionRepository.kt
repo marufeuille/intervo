@@ -3,6 +3,7 @@ package dev.marufeuille.intervo.companion.sync
 import android.content.Context
 import dev.marufeuille.intervo.companion.data.CompanionDatabase
 import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
+import dev.marufeuille.intervo.companion.health.HealthConnectWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -21,6 +22,7 @@ class CompanionRepository(context: Context) {
     private val settings = CompanionSettings(context)
     private val ingestClient = BigQueryIngestClient()
     private val requestAuthorizer by lazy { FirebaseRequestAuthorizer(appContext) }
+    private val healthConnectWriter by lazy { HealthConnectWriter(appContext) }
 
     val histories: Flow<List<CompanionWorkoutHistory>> = dao.getAll()
     val pendingCount: Flow<Int> = dao.pendingCount(MAX_AUTO_SYNC_ATTEMPTS)
@@ -40,6 +42,24 @@ class CompanionRepository(context: Context) {
 
     suspend fun receive(history: CompanionWorkoutHistory) {
         dao.insertIgnore(history)
+    }
+
+    val healthConnectAvailable: Boolean
+        get() = healthConnectWriter.isAvailable
+
+    suspend fun healthConnectPermitted(): Boolean = healthConnectWriter.hasPermissions()
+
+    /** 未書き込みの履歴を Health Connect に書き出す。権限が無ければ何もしない。 */
+    suspend fun writePendingHealthConnect(): Int = withContext(Dispatchers.IO) {
+        if (!healthConnectWriter.hasPermissions()) return@withContext 0
+        var written = 0
+        dao.getPendingHealthConnect().forEach { history ->
+            if (healthConnectWriter.write(history)) {
+                dao.markHealthConnectWritten(history.id, System.currentTimeMillis())
+                written += 1
+            }
+        }
+        written
     }
 
     suspend fun syncPending(): SyncResult = withContext(Dispatchers.IO) {
