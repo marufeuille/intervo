@@ -15,17 +15,25 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.marufeuille.intervo.data.AppDatabase
+import dev.marufeuille.intervo.data.DURATION_UNLIMITED
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.WorkoutRepository
+import dev.marufeuille.intervo.timer.TimerPhase
 import dev.marufeuille.intervo.timer.TimerService
+import dev.marufeuille.intervo.timer.TimerSnapshot
+import dev.marufeuille.intervo.timer.TimerSnapshotStore
+import dev.marufeuille.intervo.timer.TimerState
 import dev.marufeuille.intervo.ui.navigation.AppNavigation
+import dev.marufeuille.intervo.ui.screens.SKIP_BUTTON_TAG
 import dev.marufeuille.intervo.ui.theme.IntervalTheme
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -53,22 +61,39 @@ class WorkoutCreationE2ETest {
         InstrumentationRegistry.getInstrumentation().targetContext
     )
 
+    private val targetContext get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    /** TimerService を停止し、runningWorkoutId が null になるまで待つ（リーク連鎖の防止） */
+    private fun stopTimerAndWait() {
+        val ctx = targetContext
+        ctx.startService(Intent(ctx, TimerService::class.java).setAction(TimerService.ACTION_STOP))
+        val deadline = System.currentTimeMillis() + 3_000
+        while (TimerService.runningWorkoutId.value != null && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50)
+        }
+    }
+
     @Before
     fun resetState() {
-        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        // 直前のテストが残したタイマーサービスを停止（runningWorkoutId のリークで
-        // 次のテストが自動再開ダイアログに飛ぶのを防ぐ）
-        ctx.startService(Intent(ctx, TimerService::class.java).setAction(TimerService.ACTION_STOP))
-        // 各テストを決定的にするため、毎回 Room を空にする（シングルトン跨ぎでも確実）
+        // 直前のテスト/前回実行が残したタイマー・スナップショットを確実に消して決定的にする
+        stopTimerAndWait()
+        TimerSnapshotStore(targetContext).clear()
         db.clearAllTables()
+    }
+
+    @After
+    fun tearDown() {
+        // テストが中断前に失敗してもサービスを残さない（次テストの自動再開を防ぐ）
+        stopTimerAndWait()
     }
 
     private fun launchApp() {
         compose.setContent { IntervalTheme { AppNavigation() } }
     }
 
-    /** テキストが表示されるまで待つヘルパー（DB→Flow 反映やタイマー進行は非同期なため） */
-    private fun awaitText(text: String, substring: Boolean = false, timeoutMillis: Long = 5_000) {
+    /** テキストが表示されるまで待つヘルパー（DB→Flow 反映やタイマー進行は非同期なため）。
+     *  スイート負荷時の StateFlow 初回 emit に余裕を持たせるため既定 10 秒。 */
+    private fun awaitText(text: String, substring: Boolean = false, timeoutMillis: Long = 10_000) {
         compose.waitUntil(timeoutMillis = timeoutMillis) {
             compose.onAllNodesWithText(text, substring = substring).fetchSemanticsNodes().isNotEmpty()
         }
@@ -310,6 +335,106 @@ class WorkoutCreationE2ETest {
         compose.waitUntil(timeoutMillis = 5_000) { (readRemaining() ?: before) < before }
         val after = readRemaining() ?: before
         assertTrue("残り秒が減るはず: $before -> $after", after < before)
+
+        abortTimer()
+    }
+
+    @Test
+    fun 休憩をスキップすると次の種目へ進む() {
+        runBlocking {
+            val repo = WorkoutRepository(db)
+            val w = repo.addWorkout("サーキット")
+            // 1 種目目はすぐ終わる（→休憩へ）、2 種目目は長く滞在させる
+            repo.addExercise(w.id, "ジャンプ", ExerciseMode.TIMED, 1, 1, 20, 1, 0)
+            repo.addExercise(w.id, "ランジ", ExerciseMode.TIMED, 60, 1, 0, 1, 0)
+        }
+
+        launchApp()
+        awaitText("サーキット")
+        compose.onNodeWithText("サーキット").performClick()
+        // 2 種目あると「スタート」は一覧の下方にあり ScalingLazyColumn が未合成のことがある。
+        // 種目が見えたらスクロールして「スタート」を出してからタップする。
+        awaitText("ランジ")
+        compose.onRoot().performTouchInput { swipeUp() }
+        awaitText("スタート", substring = true)
+        compose.onNodeWithText("スタート", substring = true).performClick()
+
+        // 1 種目目が完了 → 休憩中
+        awaitText("休憩中", timeoutMillis = 15_000)
+        // スキップボタン（アイコンのみ＝testTag）で休憩を飛ばす
+        compose.onNodeWithTag(SKIP_BUTTON_TAG).performClick()
+        awaitText("運動中")
+        compose.onNodeWithText("ランジ").assertIsDisplayed()
+
+        abortTimer()
+    }
+
+    @Test
+    fun フリーセットを記録すると完了画面に進む() {
+        runBlocking {
+            val repo = WorkoutRepository(db)
+            val w = repo.addWorkout("自重トレ")
+            // durationSeconds = -1（DURATION_UNLIMITED）でフリーセット種目
+            repo.addExercise(w.id, "懸垂", ExerciseMode.TIMED, DURATION_UNLIMITED, 1, 0, 1, 0)
+        }
+
+        launchApp()
+        awaitText("自重トレ")
+        compose.onNodeWithText("自重トレ").performClick()
+        awaitText("スタート", substring = true)
+        compose.onNodeWithText("スタート", substring = true).performClick()
+
+        // フリーセットは「フリー」表示。タップで記録ダイアログが出る
+        awaitText("フリー")
+        tapTimer()
+        awaitText("フリーセット")
+        // 回数を 1 にして保存
+        compose.onNodeWithText("＋").performClick()
+        compose.onNodeWithText("保存").performClick()
+
+        // 最後の 1 セット・1 種目なので完了画面へ
+        awaitText("完了", substring = true, timeoutMillis = 10_000)
+        compose.onNodeWithText("閉じる").performClick()
+        awaitText("ワークアウト")
+    }
+
+    @Test
+    fun 残ったスナップショットから再開ダイアログでタイマーへ戻れる() {
+        val workoutId = runBlocking {
+            val repo = WorkoutRepository(db)
+            val w = repo.addWorkout("再開テスト")
+            val ex = repo.addExercise(w.id, "スクワット", ExerciseMode.TIMED, 60, 2, 10, 1, 0)
+            // 「種目1のセット1を実行中（残り20秒）」のスナップショットを直接保存
+            TimerSnapshotStore(targetContext).save(
+                TimerSnapshot(
+                    workoutId = w.id,
+                    workoutName = w.name,
+                    workoutSortOrder = w.sortOrder,
+                    state = TimerState(
+                        exercises = listOf(ex),
+                        phase = TimerPhase.ExercisePhase(
+                            exerciseIndex = 0,
+                            currentSet = 1,
+                            currentRep = 1,
+                            remainingSeconds = 20,
+                        ),
+                        elapsedSeconds = 5,
+                    ),
+                    savedAtEpochMillis = System.currentTimeMillis(),
+                )
+            )
+            w.id
+        }
+        requireNotNull(workoutId)
+
+        launchApp()
+
+        // 起動時に再開ダイアログが出る（"再開しますか" はダイアログ固有）
+        awaitText("再開しますか", substring = true)
+        // 「再開」でタイマーへ復帰
+        compose.onNodeWithText("再開").performClick()
+        awaitText("運動中")
+        compose.onNodeWithText("スクワット").assertIsDisplayed()
 
         abortTimer()
     }
