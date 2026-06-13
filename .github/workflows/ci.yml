@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# JS アクションを Node.js 24 で実行（Node.js 20 廃止予告の解消）
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -56,6 +60,30 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # AVD（とブート済みスナップショット）をキャッシュして 2 回目以降の起動を高速化
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-android-wear-34-x86_64
+
+      # キャッシュミス時のみ、AVD を作成してブート済みスナップショットを生成・保存
+      - name: Create AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: android-wear
+          arch: x86_64
+          profile: wearos_small_round
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD snapshot generated."
+
       # Wear OS 5 (API 34, x86_64) のエミュレータ上で connectedDebugAndroidTest を実行
       - name: Run E2E on Wear OS emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -64,8 +92,9 @@ jobs:
           target: android-wear
           arch: x86_64
           profile: wearos_small_round
+          force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew :app:connectedDebugAndroidTest
 
       # PASS/FAIL 表をジョブサマリに出力（結果は GitHub Actions の Summary タブで一覧できる）

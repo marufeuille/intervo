@@ -11,6 +11,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,6 +26,7 @@ import dev.marufeuille.intervo.timer.TimerService
 import dev.marufeuille.intervo.ui.navigation.AppNavigation
 import dev.marufeuille.intervo.ui.theme.IntervalTheme
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -68,6 +73,34 @@ class WorkoutCreationE2ETest {
             compose.onAllNodesWithText(text, substring = substring).fetchSemanticsNodes().isNotEmpty()
         }
     }
+
+    /** タイマー画面の中央をタップ（onTap = 一時停止/再開のトグル） */
+    private fun tapTimer() {
+        compose.onRoot().performTouchInput { click() }
+    }
+
+    /** 長押し → 「中断」でタイマーを止めて一覧へ戻る */
+    private fun abortTimer() {
+        compose.onRoot().performTouchInput { longClick() }
+        awaitText("中断しますか？")
+        compose.onNodeWithText("中断").performClick()
+        awaitText("ワークアウト")
+    }
+
+    /** 桁のみ（残り秒）の Text を表すマッチャ。セット表記等は "/" を含むため除外される */
+    private val digitsOnlyText = SemanticsMatcher("text is digits only") { node ->
+        val text = node.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }
+        text != null && text.matches(Regex("\\d+"))
+    }
+
+    /** 画面上に出ている残り秒を読む（複数桁ノードがあれば最大値＝残り秒） */
+    private fun readRemaining(): Int? =
+        compose.onAllNodes(digitsOnlyText, useUnmergedTree = true)
+            .fetchSemanticsNodes()
+            .mapNotNull { node ->
+                node.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }?.toIntOrNull()
+            }
+            .maxOrNull()
 
     @Test
     fun シードしたワークアウトが一覧に出て詳細でスタートできる() {
@@ -232,5 +265,52 @@ class WorkoutCreationE2ETest {
         compose.onNodeWithText("履歴").performClick()
         awaitText("朝ルーティン")
         compose.onNodeWithText("朝ルーティン").assertIsDisplayed()
+    }
+
+    @Test
+    fun タイマーをタップで一時停止と再開ができる() {
+        runBlocking {
+            val repo = WorkoutRepository(db)
+            val w = repo.addWorkout("体幹")
+            repo.addExercise(w.id, "プランク", ExerciseMode.TIMED, 60, 1, 0, 1, 0)
+        }
+
+        launchApp()
+        awaitText("体幹")
+        compose.onNodeWithText("体幹").performClick()
+        awaitText("スタート", substring = true)
+        compose.onNodeWithText("スタート", substring = true).performClick()
+
+        awaitText("運動中")
+        tapTimer()
+        awaitText("一時停止")
+        tapTimer()
+        awaitText("運動中")
+
+        abortTimer()
+    }
+
+    @Test
+    fun 運動中は残り秒がカウントダウンする() {
+        runBlocking {
+            val repo = WorkoutRepository(db)
+            val w = repo.addWorkout("ストレッチ")
+            repo.addExercise(w.id, "前屈", ExerciseMode.TIMED, 60, 1, 0, 1, 0)
+        }
+
+        launchApp()
+        awaitText("ストレッチ")
+        compose.onNodeWithText("ストレッチ").performClick()
+        awaitText("スタート", substring = true)
+        compose.onNodeWithText("スタート", substring = true).performClick()
+
+        awaitText("運動中")
+        val before = readRemaining() ?: error("残り秒が読み取れない")
+        // 残り秒が減るまで待つ（減らなければ waitUntil がタイムアウトして失敗）
+        compose.waitUntil(timeoutMillis = 5_000) { (readRemaining() ?: before) < before }
+        val after = readRemaining() ?: before
+        assertTrue("残り秒が減るはず: $before -> $after", after < before)
+
+        abortTimer()
     }
 }
