@@ -18,7 +18,9 @@ import dev.marufeuille.intervo.data.AppDatabase
 import dev.marufeuille.intervo.data.Workout
 import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.ui.theme.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class WorkoutEditViewModel(app: Application, saved: SavedStateHandle) : AndroidViewModel(app) {
     private val repo = WorkoutRepository(AppDatabase.getInstance(app))
@@ -99,7 +101,11 @@ fun WorkoutEditScreen(
                 Button(
                     onClick = {
                         if (vm.name.isBlank()) { error = true; return@Button }
-                        scope.launch { onSaved(vm.save()) }
+                        scope.launch {
+                            // 保存（DB=別ディスパッチャ）後の navigate は必ずメインスレッドで行う
+                            val savedId = vm.save()
+                            withContext(Dispatchers.Main) { onSaved(savedId) }
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(backgroundColor = ExerciseOrange),
                     modifier = Modifier.width(140.dp)
