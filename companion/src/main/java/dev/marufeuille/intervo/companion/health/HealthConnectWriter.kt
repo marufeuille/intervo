@@ -9,6 +9,7 @@ import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.metadata.Metadata
 import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
 import org.json.JSONArray
+import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 
@@ -50,7 +51,7 @@ class HealthConnectWriter(context: Context) {
             startZoneOffset = zone,
             endTime = end,
             endZoneOffset = zone,
-            exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
+            exerciseType = resolveExerciseType(history.workoutSnapshotJson),
             title = history.workoutName.ifBlank { null },
             metadata = Metadata.manualEntry(clientRecordId = "session_${history.id}")
         )
@@ -67,6 +68,25 @@ class HealthConnectWriter(context: Context) {
 
         return runCatching { client.insertRecords(records) }.isSuccess
     }
+
+    /**
+     * workout_snapshot_json 内の exercise_type（ExerciseCategory の enum 名）を
+     * Health Connect の ExerciseSessionRecord.EXERCISE_TYPE_* 定数へ変換する。
+     * 欠落・未知のキーは EXERCISE_TYPE_OTHER_WORKOUT にフォールバックする（既存データの後方互換）。
+     */
+    private fun resolveExerciseType(snapshotJson: String): Int = runCatching {
+        if (snapshotJson.isBlank()) return@runCatching ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT
+        when (JSONObject(snapshotJson).optString("exercise_type")) {
+            "STRENGTH_TRAINING" -> ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING
+            "HIGH_INTENSITY_INTERVAL_TRAINING" -> ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING
+            "STRETCHING" -> ExerciseSessionRecord.EXERCISE_TYPE_STRETCHING
+            "CALISTHENICS" -> ExerciseSessionRecord.EXERCISE_TYPE_CALISTHENICS
+            "YOGA" -> ExerciseSessionRecord.EXERCISE_TYPE_YOGA
+            "RUNNING" -> ExerciseSessionRecord.EXERCISE_TYPE_RUNNING
+            "WALKING" -> ExerciseSessionRecord.EXERCISE_TYPE_WALKING
+            else -> ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT
+        }
+    }.getOrDefault(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT)
 
     private data class ParsedSample(val time: Instant, val bpm: Long)
 

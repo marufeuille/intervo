@@ -18,6 +18,7 @@ import androidx.wear.ongoing.Status
 import dev.marufeuille.intervo.MainActivity
 import dev.marufeuille.intervo.R
 import dev.marufeuille.intervo.data.AppDatabase
+import dev.marufeuille.intervo.data.ExerciseCategory
 import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.sync.WorkoutHistorySyncClient
 import kotlinx.coroutines.*
@@ -55,6 +56,7 @@ class TimerService : Service() {
         private set
     private var workoutName: String = ""
     private var workoutSortOrder: Int? = null
+    private var workoutExerciseType: String = ExerciseCategory.DEFAULT.name
     private var historySaved = false
 
     override fun onCreate() {
@@ -108,6 +110,7 @@ class TimerService : Service() {
             _runningWorkoutId.value = workoutId
             workoutName = workout?.name ?: ""
             workoutSortOrder = workout?.sortOrder
+            workoutExerciseType = workout?.exerciseType ?: ExerciseCategory.DEFAULT.name
             historySaved = false
             lastPersistedKey = null
             promoteToForeground()
@@ -126,6 +129,7 @@ class TimerService : Service() {
         _runningWorkoutId.value = snapshot.workoutId
         workoutName = snapshot.workoutName
         workoutSortOrder = snapshot.workoutSortOrder
+        workoutExerciseType = snapshot.workoutExerciseType
         historySaved = false
         lastPersistedKey = null
         promoteToForeground()
@@ -252,6 +256,7 @@ class TimerService : Service() {
             workoutId = workoutId,
             workoutName = workoutName,
             workoutSortOrder = workoutSortOrder,
+            workoutExerciseType = workoutExerciseType,
             state = state,
             savedAtEpochMillis = System.currentTimeMillis()
         )
@@ -276,6 +281,7 @@ class TimerService : Service() {
                     totalSeconds = finalState.elapsedSeconds,
                     exerciseCount = finalState.exercises.size,
                     workoutSortOrder = workoutSortOrder,
+                    workoutExerciseType = workoutExerciseType,
                     exercises = finalState.exercises,
                     freeSetRecords = finalState.freeSetRecords,
                     startHr = hrAccumulator.startHr(),

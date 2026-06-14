@@ -2,6 +2,7 @@ package dev.marufeuille.intervo.timer
 
 import android.content.Context
 import dev.marufeuille.intervo.data.Exercise
+import dev.marufeuille.intervo.data.ExerciseCategory
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
 import org.json.JSONArray
@@ -16,6 +17,7 @@ data class TimerSnapshot(
     val workoutId: String,
     val workoutName: String,
     val workoutSortOrder: Int?,
+    val workoutExerciseType: String = ExerciseCategory.DEFAULT.name,
     val state: TimerState,
     val savedAtEpochMillis: Long
 )
@@ -41,6 +43,7 @@ class TimerSnapshotStore(context: Context) {
         put("workoutId", snapshot.workoutId)
         put("workoutName", snapshot.workoutName)
         snapshot.workoutSortOrder?.let { put("workoutSortOrder", it) }
+        put("workoutExerciseType", snapshot.workoutExerciseType)
         put("savedAtEpochMillis", snapshot.savedAtEpochMillis)
         put("elapsedSeconds", snapshot.state.elapsedSeconds)
         put("phase", phaseToJson(snapshot.state.phase))
@@ -63,6 +66,7 @@ class TimerSnapshotStore(context: Context) {
             workoutId = json.getString("workoutId"),
             workoutName = json.getString("workoutName"),
             workoutSortOrder = if (json.has("workoutSortOrder")) json.getInt("workoutSortOrder") else null,
+            workoutExerciseType = if (json.has("workoutExerciseType")) json.getString("workoutExerciseType") else ExerciseCategory.DEFAULT.name,
             state = TimerState(
                 exercises = exercises,
                 phase = phaseFromJson(json.getJSONObject("phase")),

@@ -92,7 +92,8 @@ fun AppNavigation(initialWorkoutId: String? = null) {
                 workoutId = workoutId,
                 onExerciseClick = { navController.navigate(Routes.exerciseEdit(workoutId, it)) },
                 onAddExercise = { navController.navigate(Routes.exerciseEdit(workoutId)) },
-                onStart = { navController.navigate(Routes.timer(workoutId)) }
+                onStart = { navController.navigate(Routes.timer(workoutId)) },
+                onEdit = { navController.navigate(Routes.workoutEdit(workoutId)) }
             )
         }
         composable(

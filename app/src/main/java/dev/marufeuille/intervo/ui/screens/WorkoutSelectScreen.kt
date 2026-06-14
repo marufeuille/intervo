@@ -99,6 +99,7 @@ class WorkoutSelectViewModel(app: Application) : AndroidViewModel(app) {
                         totalSeconds = snapshot.state.elapsedSeconds,
                         exerciseCount = snapshot.state.exercises.size,
                         workoutSortOrder = snapshot.workoutSortOrder,
+                        workoutExerciseType = snapshot.workoutExerciseType,
                         exercises = snapshot.state.exercises,
                         freeSetRecords = snapshot.state.freeSetRecords,
                     )
