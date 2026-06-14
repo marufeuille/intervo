@@ -21,8 +21,8 @@ android {
         applicationId = "dev.marufeuille.intervo"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "1.6.0"
+        versionCode = 20
+        versionName = "1.7.0"
         buildConfigField(
             "String",
             "DEFAULT_INGEST_ENDPOINT",
