@@ -6,6 +6,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
 import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
 import org.json.JSONArray
@@ -41,6 +42,10 @@ class HealthConnectWriter(context: Context) {
         val start = end.minusSeconds(history.totalSeconds.toLong().coerceAtLeast(1L))
         val zone = ZoneId.systemDefault().rules.getOffset(end)
 
+        // Wear OS 上で運動中に実測した記録なので「手動入力」ではなく「アクティブ記録」として書き込む。
+        // manualEntry のままだとカロミル等が手動エントリを運動時間の集計から除外し、時間が反映されない。
+        val device = Device(type = Device.TYPE_WATCH)
+
         val samples = parseSamples(history.hrSamplesJson)
             .filter { !it.time.isBefore(start) && !it.time.isAfter(end) }
             .sortedBy { it.time }
@@ -52,8 +57,12 @@ class HealthConnectWriter(context: Context) {
             endTime = end,
             endZoneOffset = zone,
             exerciseType = resolveExerciseType(history.workoutSnapshotJson),
-            title = history.workoutName.ifBlank { null },
-            metadata = Metadata.manualEntry(clientRecordId = "session_${history.id}")
+            // title は付けない。title を設定すると Android Health の一覧で主見出しが
+            // ワークアウト名に置き換わり、継続時間（start〜end）が前面に出なくなるため。
+            // ワークアウト名は notes に入れ、一覧では「種別・◯分」を見せつつ詳細で名前を参照できるようにする。
+            title = null,
+            notes = history.workoutName.ifBlank { null },
+            metadata = Metadata.activelyRecorded(device = device, clientRecordId = "session_${history.id}")
         )
         if (samples.isNotEmpty()) {
             records += HeartRateRecord(
@@ -62,7 +71,7 @@ class HealthConnectWriter(context: Context) {
                 endTime = samples.last().time,
                 endZoneOffset = zone,
                 samples = samples.map { HeartRateRecord.Sample(it.time, it.bpm.toLong()) },
-                metadata = Metadata.manualEntry(clientRecordId = "hr_${history.id}")
+                metadata = Metadata.activelyRecorded(device = device, clientRecordId = "hr_${history.id}")
             )
         }
 
