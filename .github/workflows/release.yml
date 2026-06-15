@@ -79,16 +79,27 @@ jobs:
       - name: Build release bundles
         run: ./gradlew :app:bundleRelease :companion:bundleRelease
 
-      # 内部テストへ配信（tag push のときのみ）。app/companion 2 つの AAB を 1 リリースにまとめる。
-      - name: Upload to Play (internal track)
+      # 内部テストへ配信（tag push のときのみ）。
+      # app(Wear) と companion(phone) は applicationId を共有するマルチフォームファクタ構成。
+      # 両 AAB を 1 リリースに混在させると「watch feature を要求する artifact は publish 不可」で
+      # commit に失敗するため、手動運用と同様にフォームファクタごとの別リリースとして配信する。
+      - name: Upload app (Wear) to Play (internal track)
         if: github.ref_type == 'tag'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: dev.marufeuille.intervo
-          # r0adkll/upload-google-play は releaseFiles をカンマ区切りでパースする。
-          # YAML の `|`（改行区切り）だと両 AAB が 1 パス扱いになりマッチしないため、カンマ区切り 1 行で渡す。
-          releaseFiles: app/build/outputs/bundle/release/app-release.aab,companion/build/outputs/bundle/release/companion-release.aab
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+
+      - name: Upload companion (phone) to Play (internal track)
+        if: github.ref_type == 'tag'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.marufeuille.intervo
+          releaseFiles: companion/build/outputs/bundle/release/companion-release.aab
           track: internal
           status: completed
 
