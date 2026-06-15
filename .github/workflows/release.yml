@@ -91,8 +91,13 @@ jobs:
             exit 1
           fi
           mkdir -p whatsnew
-          # 最初の ``` フェンス内の行だけを出力（最新情報テキスト）
-          awk '/^```/{c++; next} c==1' "$NOTES_FILE" > whatsnew/whatsnew-ja-JP
+          # 「Play Console『最新情報』用」見出し以降、最初の ``` フェンス内の行だけを出力。
+          # scripts/check_release_notes.py の抽出仕様と一致させること。
+          awk '
+            /Play Console「最新情報」用/ {seen=1; next}
+            seen && /^```/ {c++; next}
+            seen && c==1 {print}
+          ' "$NOTES_FILE" > whatsnew/whatsnew-ja-JP
           if [ ! -s whatsnew/whatsnew-ja-JP ]; then
             echo "::error::$NOTES_FILE の先頭コードフェンス（最新情報）が空です。"
             exit 1
