@@ -12,6 +12,19 @@ val keystoreProps = Properties().also { props ->
     if (file.exists()) props.load(file.inputStream())
 }
 
+// semver から versionName / versionCode を決定論的に算出する。
+// CI はタグ vX.Y.Z から VERSION_NAME=X.Y.Z を渡す。未設定（ローカル）時はフォールバック値。
+val resolvedVersionName: String = System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() } ?: "1.7.1"
+
+// 例: 1.7.2 → (1*10000 + 7*100 + 2)*10 + offset。app は offset=0、companion は offset=1。
+fun versionCodeFrom(name: String, offset: Int): Int {
+    val parts = name.substringBefore("-").split(".")
+    val major = parts.getOrNull(0)?.toIntOrNull() ?: 0
+    val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+    return (major * 10000 + minor * 100 + patch) * 10 + offset
+}
+
 android {
     namespace = "dev.marufeuille.intervo"
     compileSdk = 36
@@ -20,8 +33,8 @@ android {
         applicationId = "dev.marufeuille.intervo"
         minSdk = 30
         targetSdk = 36
-        versionCode = 19
-        versionName = "1.7.0"
+        versionCode = versionCodeFrom(resolvedVersionName, 0)
+        versionName = resolvedVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
