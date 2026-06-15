@@ -8,19 +8,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.wear.ambient.AmbientLifecycleObserver
-import dev.marufeuille.intervo.timer.TimerViewModel
 import dev.marufeuille.intervo.ui.navigation.AppNavigation
 import dev.marufeuille.intervo.ui.theme.IntervalTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Tile / Complication からワークアウト詳細を開くための Intent extra キー */
 const val EXTRA_WORKOUT_ID = "dev.marufeuille.intervo.extra.WORKOUT_ID"
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var timerViewModel: TimerViewModel
     private lateinit var ambientObserver: AmbientLifecycleObserver
+
+    /** Ambient（常時表示）状態の単一ソース。Ambient コールバックで更新し、Compose 側へ流す。 */
+    private val ambient = MutableStateFlow(false)
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
@@ -30,14 +31,12 @@ class MainActivity : ComponentActivity() {
 
         requestTimerPermissions()
 
-        timerViewModel = ViewModelProvider(this)[TimerViewModel::class.java]
-
         ambientObserver = AmbientLifecycleObserver(this, object : AmbientLifecycleObserver.AmbientLifecycleCallback {
             override fun onEnterAmbient(ambientDetails: AmbientLifecycleObserver.AmbientDetails) {
-                timerViewModel.setAmbient(true)
+                ambient.value = true
             }
             override fun onExitAmbient() {
-                timerViewModel.setAmbient(false)
+                ambient.value = false
             }
             override fun onUpdateAmbient() {}
         })
@@ -47,7 +46,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             IntervalTheme {
-                AppNavigation(initialWorkoutId = initialWorkoutId)
+                AppNavigation(initialWorkoutId = initialWorkoutId, ambient = ambient)
             }
         }
     }
