@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intervo プライバシーポリシー</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN",
+        "Noto Sans JP", Meiryo, sans-serif;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 2rem 1.2rem 4rem;
+      color: #1a1a1a;
+      background: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: #e6e6e6; background: #14151a; }
+      a { color: #6db3ff; }
+      h1, h2 { border-color: #333; }
+    }
+    h1 { font-size: 1.6rem; border-bottom: 2px solid #ddd; padding-bottom: .5rem; }
+    h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #eee; padding-bottom: .3rem; }
+    .meta { color: #888; font-size: .9rem; }
+    ul { padding-left: 1.4rem; }
+    code { background: rgba(127,127,127,.15); padding: .1em .3em; border-radius: 4px; font-size: .9em; }
+    footer { margin-top: 3rem; font-size: .85rem; color: #888; }
+  </style>
+</head>
+<body>
+  <h1>Intervo プライバシーポリシー</h1>
+  <p class="meta">最終更新日: 2026年6月15日</p>
+
+  <p>
+    本プライバシーポリシーは、Wear OS アプリおよびスマートフォン用コンパニオンアプリ
+    「Intervo」（以下「本アプリ」）における利用者の情報の取り扱いについて定めるものです。
+    本アプリはインターバル・トレーニング用のタイマーであり、ワークアウト中の心拍数や
+    運動記録を扱います。
+  </p>
+
+  <h2>1. 収集する情報</h2>
+  <p>本アプリは、利用者が本アプリを使用する過程で以下の情報を取り扱います。</p>
+  <ul>
+    <li><strong>心拍数データ</strong>: Wear OS 端末のセンサー（Health Services）から取得する
+      ワークアウト中の心拍数、およびその集計値（平均・最大など）。</li>
+    <li><strong>運動・ワークアウト記録</strong>: ワークアウト名、種目、セット数、各フェーズの時間、
+      開始／終了時刻などの記録。</li>
+    <li><strong>アプリの動作に必要な識別情報</strong>: バックエンドとの安全な通信のための
+      認証情報（匿名認証およびアプリ整合性確認に用いる情報）。</li>
+  </ul>
+  <p>本アプリは、氏名・住所・電話番号といった連絡先情報や、広告目的のトラッキング情報を収集しません。</p>
+
+  <h2>2. 情報の利用目的</h2>
+  <ul>
+    <li>ワークアウトの計測・表示、および運動履歴の記録・閲覧のため。</li>
+    <li>利用者自身の運動データを端末間（ウォッチ／スマートフォン）で同期するため。</li>
+    <li>利用者の希望に応じて、運動データを Health Connect および利用者本人のためのバックエンドに
+      保存するため。</li>
+  </ul>
+
+  <h2>3. データの保存先と第三者提供</h2>
+  <ul>
+    <li><strong>端末内</strong>: 運動記録および心拍データは、まず利用者の端末内（ローカルデータベース）に
+      保存されます。</li>
+    <li><strong>Health Connect</strong>: 利用者が許可した場合に限り、運動セッションおよび心拍記録を
+      Android の Health Connect に書き込みます。Health Connect 内のデータの取り扱いは、
+      利用者の端末および Google の管理下にあります。</li>
+    <li><strong>バックエンド（Google Cloud / Firebase）</strong>: 運動履歴は、利用者本人の記録管理を
+      目的として、開発者が運用する Google Cloud（Cloud Functions / BigQuery）上のバックエンドへ
+      送信・保存される場合があります。通信は Firebase Authentication および App Check により保護されます。</li>
+  </ul>
+  <p>
+    本アプリは、上記の目的以外で利用者のデータを第三者へ販売・提供することはありません。
+    データ処理基盤として Google のサービス（Google Cloud Platform、Firebase、Health Connect）を
+    利用しており、これらのサービスには各社のプライバシーポリシーが適用されます。
+  </p>
+
+  <h2>4. データの保持と削除</h2>
+  <p>
+    端末内に保存された記録は、本アプリのデータ削除またはアンインストールにより削除できます。
+    Health Connect に書き込まれたデータは、Health Connect の設定画面から利用者自身が削除できます。
+    バックエンドに保存されたデータの削除をご希望の場合は、下記の連絡先までご連絡ください。
+  </p>
+
+  <h2>5. 権限について</h2>
+  <p>本アプリは、機能の提供のために以下の権限を利用します。</p>
+  <ul>
+    <li><strong>身体センサー／心拍数（health permissions）</strong>: ワークアウト中の心拍数を計測するため。</li>
+    <li><strong>Health Connect への書き込み</strong>: 運動・心拍記録を Health Connect に保存するため
+      （利用者の許可が必要です）。</li>
+    <li><strong>ネットワーク通信</strong>: 端末間同期およびバックエンドへの保存のため。</li>
+  </ul>
+
+  <h2>6. お子様のプライバシー</h2>
+  <p>本アプリは、13 歳未満の子供を対象としていません。</p>
+
+  <h2>7. 本ポリシーの変更</h2>
+  <p>
+    本プライバシーポリシーは、必要に応じて改定されることがあります。重要な変更がある場合は、
+    本ページ上で告知します。
+  </p>
+
+  <h2>8. お問い合わせ</h2>
+  <p>
+    本プライバシーポリシーまたはデータの取り扱いに関するお問い合わせは、以下までご連絡ください。<br>
+    メール: <a href="mailto:marufeuille@gmail.com">marufeuille@gmail.com</a>
+  </p>
+
+  <footer>
+    Intervo — © 2026 marufeuille. このページは本アプリのプライバシーポリシーとして公開されています。
+  </footer>
+</body>
+</html>
