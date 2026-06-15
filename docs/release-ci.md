@@ -63,11 +63,15 @@ VERSION_NAME=1.7.2 ./gradlew :app:bundleRelease
 CI は復元時に以下を生成する（`build.gradle.kts` の signingConfig が読む `keystore.properties` 形式）:
 
 ```properties
-storeFile=keystore-release.jks
+storeFile=$GITHUB_WORKSPACE/keystore-release.jks
 storePassword=$KEYSTORE_PASSWORD
 keyAlias=$KEY_ALIAS
 keyPassword=$KEY_PASSWORD
 ```
+
+> `storeFile` は絶対パスで指定する。`build.gradle.kts` の `file(...)` は各モジュール
+> （app/ companion/）基準で相対パスを解決するため、相対パスだと `app/keystore-release.jks`
+> を探して失敗する。CI では `$GITHUB_WORKSPACE` 直下に復元し絶対パスで参照する。
 
 `GOOGLE_SERVICES_JSON_BASE64` は `companion/src/release/google-services.json` に復元される
 （ローカルと同じ配置）。

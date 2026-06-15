@@ -46,6 +46,8 @@ jobs:
 
       # 署名鍵を Secrets から復元。既存の signingConfig（keystore.properties を読む）が
       # そのまま機能するため build.gradle 側の変更は不要。
+      # storeFile は build.gradle の file(...) がモジュール基準で解決するため、
+      # app/companion 双方から確実に届く絶対パス（$GITHUB_WORKSPACE 直下）で指定する。
       - name: Restore signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -53,9 +55,9 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > keystore-release.jks
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/keystore-release.jks"
           cat > keystore.properties <<EOF
-          storeFile=keystore-release.jks
+          storeFile=$GITHUB_WORKSPACE/keystore-release.jks
           storePassword=$KEYSTORE_PASSWORD
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
