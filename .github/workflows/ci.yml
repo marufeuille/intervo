@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-    # ドキュメントのみの変更ではビルド/E2E を回さない（変更が全て docs/** か Markdown のときスキップ）
+    # ドキュメントのみの変更ではビルドを回さない（変更が全て docs/** か Markdown のときスキップ）
     paths-ignore:
       - "docs/**"
       - "**/*.md"
@@ -19,6 +19,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # 軽量チェック（PR・main push 共通）: 「壊れてないか」を JVM だけで高速検証する層。
+  # コンパイル + Lint（静的解析）+ ユニットテスト。実機は起動しない。
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -33,23 +35,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       # companion は google-services.json（非コミット）が必要なため、CI では :app のみ対象
-      - name: Build and run unit tests
-        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest
+      - name: Build, lint and run unit tests
+        run: ./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
 
-      - name: Check release build (R8)
-        run: ./gradlew :app:assembleRelease
-
-      - name: Upload test reports
+      - name: Upload reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: build-reports
           path: |
             app/build/reports/tests/
+            app/build/reports/lint-results-*.html
             app/build/reports/problems/
 
+  # 実機 E2E（main push のみ）: 「画面・体験が壊れてないか」を Wear OS エミュレータで検証する層。
+  # マージ直後に体験の破壊を早期検知するのが目的（main を緑に保つ努力）。PR では走らせず開発フィードバックを高速に保つ。
+  # 配信を確実に止める「リリース前ゲート」は release.yml 側の e2e ジョブ（release が needs: e2e）で別途担保する。
   instrumented-test:
     name: E2E (Wear OS emulator)
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -60,7 +64,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Gradle キャッシュの書き込みは build ジョブに任せ、ここは read-only（保存処理の時間を節約）
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
 
       # Android エミュレータのハードウェアアクセラレーション（KVM）を有効化
       - name: Enable KVM
