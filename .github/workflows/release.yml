@@ -118,7 +118,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: dev.marufeuille.intervo
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          track: wear:internal
+          tracks: wear:internal
           status: completed
           whatsNewDirectory: whatsnew
 
@@ -129,7 +129,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: dev.marufeuille.intervo
           releaseFiles: companion/build/outputs/bundle/release/companion-release.aab
-          track: internal
+          tracks: internal
           status: completed
           whatsNewDirectory: whatsnew
 
