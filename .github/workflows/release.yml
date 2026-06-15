@@ -1,0 +1,100 @@
+name: Release
+
+# タグ vX.Y.Z を push すると、app/companion を署名ビルドして Play の内部テストへ配信する。
+# workflow_dispatch では配信手前（復元・テスト・ビルド）までを検証できる（配信は tag push 時のみ）。
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "確認用バージョン名（例 1.7.2）。配信はされず、ビルド検証のみ。"
+        required: false
+
+# JS アクションを Node.js 24 で実行（ci.yml と同様）
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# 最小権限。Play 配信は別途サービスアカウント Secret を使うため GITHUB_TOKEN は読み取りで足りる。
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # タグ vX.Y.Z → VERSION_NAME=X.Y.Z。dispatch は入力値（無ければビルド確認用のダミー）。
+      - name: Resolve version name
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION_NAME=${INPUT_VERSION:-0.0.0-dispatch}" >> "$GITHUB_ENV"
+          fi
+
+      # 署名鍵を Secrets から復元。既存の signingConfig（keystore.properties を読む）が
+      # そのまま機能するため build.gradle 側の変更は不要。
+      - name: Restore signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > keystore-release.jks
+          cat > keystore.properties <<EOF
+          storeFile=keystore-release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      # companion は Firebase Auth / App Check を使うため google-services.json が必須。
+      # release variant 用は companion/src/release/ に置く（ローカルと同じ配置）。
+      - name: Restore google-services.json (release)
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          mkdir -p companion/src/release
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > companion/src/release/google-services.json
+
+      # 配信前のガード。失敗したら以降を止める。
+      - name: Unit tests (guard)
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Build release bundles
+        run: ./gradlew :app:bundleRelease :companion:bundleRelease
+
+      # 内部テストへ配信（tag push のときのみ）。app/companion 2 つの AAB を 1 リリースにまとめる。
+      - name: Upload to Play (internal track)
+        if: github.ref_type == 'tag'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.marufeuille.intervo
+          releaseFiles: |
+            app/build/outputs/bundle/release/app-release.aab
+            companion/build/outputs/bundle/release/companion-release.aab
+          track: internal
+          status: completed
+
+      - name: Upload AAB artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aabs
+          path: |
+            app/build/outputs/bundle/release/app-release.aab
+            companion/build/outputs/bundle/release/companion-release.aab
