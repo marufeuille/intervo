@@ -96,15 +96,21 @@ keyPassword=$KEY_PASSWORD
 ## 運用フロー
 
 1. 機能をマージし、リリース対象が main に揃った状態にする。
-2. タグを打って push:
+2. **リリースノートを用意する**: `docs/release-notes-TEMPLATE.md` をコピーして `docs/release-notes-<VERSION>.md` を作成（例 `docs/release-notes-1.7.2.md`）。
+   「Play Console『最新情報』用」見出しの直下に、コードフェンス ` ``` ` で囲んだ本文（500字以内）を書く。
+   CI はこの**見出し以降の最初のコードフェンスの中身**を抽出して Play の「最新情報（What's new）」として `ja-JP` に登録する。
+   - 形式は `validate-release-notes` ワークフローが PR 時に検証する（見出し・フェンスの有無・空でないこと・500字以内）。
+     ローカル確認: `python3 scripts/check_release_notes.py docs/release-notes-<VERSION>.md`
+   - このファイルが無い／フェンスが空のままタグを打つと、Release ワークフローは**意図的に失敗**する（リリースノート無しでの配信を防ぐため）。
+3. タグを打って push:
 
    ```bash
    git tag v1.7.2
    git push origin v1.7.2
    ```
 
-3. GitHub Actions の **Release** ワークフローが走り、内部テストへ配信される。
-4. Play Console の内部テストで実機確認 → 問題なければ製品版トラックへ昇格（Play Console 上で手動）。
+4. GitHub Actions の **Release** ワークフローが走り、リリースノート付きで内部テストへ配信される。
+5. Play Console の内部テストで実機確認 → 問題なければ製品版トラックへ昇格（Play Console 上で手動）。
 
 ### 配信前だけ検証したいとき
 

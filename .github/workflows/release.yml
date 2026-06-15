@@ -79,6 +79,32 @@ jobs:
       - name: Build release bundles
         run: ./gradlew :app:bundleRelease :companion:bundleRelease
 
+      # Play の「最新情報」を docs/release-notes-<VERSION>.md の先頭コードフェンス
+      #（= 「Play Console『最新情報』用」ブロック）から抽出し、whatsnew-<locale> を生成する。
+      # ノートが無い／空ならタグリリースを止める（リリースノート無しでの配信を防ぐ）。
+      - name: Prepare Play release notes (whatsnew)
+        if: github.ref_type == 'tag'
+        run: |
+          NOTES_FILE="docs/release-notes-${VERSION_NAME}.md"
+          if [ ! -f "$NOTES_FILE" ]; then
+            echo "::error::$NOTES_FILE が見つかりません。リリースノート（最新情報）を用意してからタグを打ってください。"
+            exit 1
+          fi
+          mkdir -p whatsnew
+          # 「Play Console『最新情報』用」見出し以降、最初の ``` フェンス内の行だけを出力。
+          # scripts/check_release_notes.py の抽出仕様と一致させること。
+          awk '
+            /Play Console「最新情報」用/ {seen=1; next}
+            seen && /^```/ {c++; next}
+            seen && c==1 {print}
+          ' "$NOTES_FILE" > whatsnew/whatsnew-ja-JP
+          if [ ! -s whatsnew/whatsnew-ja-JP ]; then
+            echo "::error::$NOTES_FILE の先頭コードフェンス（最新情報）が空です。"
+            exit 1
+          fi
+          echo "----- whatsnew (ja-JP) -----"
+          cat whatsnew/whatsnew-ja-JP
+
       # 内部テストへ配信（tag push のときのみ）。
       # app(Wear) と companion(phone) は applicationId を共有するマルチフォームファクタ構成で、
       # Play 上はフォームファクタ別トラックに分かれる。Play Developer API ではフォームファクタ別
@@ -94,6 +120,7 @@ jobs:
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
           track: wear:internal
           status: completed
+          whatsNewDirectory: whatsnew
 
       - name: Upload companion (phone) to Play (internal track)
         if: github.ref_type == 'tag'
@@ -104,6 +131,7 @@ jobs:
           releaseFiles: companion/build/outputs/bundle/release/companion-release.aab
           track: internal
           status: completed
+          whatsNewDirectory: whatsnew
 
       - name: Upload AAB artifacts
         if: always()
