@@ -80,13 +80,6 @@ android {
         compose = true
         buildConfig = true
     }
-    lint {
-        // Compose BOM 2024.06 同梱の Lint(kotlinx-metadata) が Kotlin 2.2 のメタデータを読めず
-        // クラッシュするため一時的に無効化。Compose BOM 更新(Track B)で解消したら除去する。
-        disable += "FlowOperatorInvokedInComposition"
-        disable += "StateFlowValueCalledInComposition"
-        disable += "CoroutineCreationDuringComposition"
-    }
 }
 
 dependencies {
