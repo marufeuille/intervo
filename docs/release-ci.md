@@ -18,7 +18,7 @@ release.yml (push: tags ['v*'])
   3. Secrets から keystore / google-services.json を復元
   4. :app:testDebugUnitTest（ガード）
   5. :app:bundleRelease :companion:bundleRelease
-  6. Play 内部テストへ 2 AAB を 1 リリースで配信
+  6. Play 内部テストへ配信（app=Wear / companion=phone を**フォームファクタ別リリース**で 2 回）
   7. AAB を artifact 保存（保険）
 ```
 
@@ -117,3 +117,9 @@ GitHub Actions → Release → 「Run workflow」（workflow_dispatch）。
   本プロジェクトは既に内部テスト運用中のため API 配信可能。
 - 1.7.1（versionCode 21 / 22）はコミット済み。CI 化後の次リリースから semver 採番（107020〜）に切り替わる。
 - 署名鍵・サービスアカウント鍵は私（Claude）は扱わない。ユーザーが GitHub Secrets に登録する。
+- app(Wear) と companion(phone) は applicationId を共有するマルチフォームファクタ構成。
+  両 AAB を 1 リリースに混在させると `requires the Wear OS system feature android.hardware.type.watch`
+  で commit に失敗するため、**フォームファクタごとに別リリースで配信**する（手動運用と同様）。
+- GCP プロジェクト（`intervo-app`）で **Android Publisher API**（`androidpublisher.googleapis.com`）の
+  有効化が必要。未有効だと配信ステップが `API has not been used ... or it is disabled` で失敗する。
+  `gcloud services enable androidpublisher.googleapis.com --project=intervo-app`
