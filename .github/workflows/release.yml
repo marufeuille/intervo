@@ -86,9 +86,9 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: dev.marufeuille.intervo
-          releaseFiles: |
-            app/build/outputs/bundle/release/app-release.aab
-            companion/build/outputs/bundle/release/companion-release.aab
+          # r0adkll/upload-google-play は releaseFiles をカンマ区切りでパースする。
+          # YAML の `|`（改行区切り）だと両 AAB が 1 パス扱いになりマッチしないため、カンマ区切り 1 行で渡す。
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab,companion/build/outputs/bundle/release/companion-release.aab
           track: internal
           status: completed
 
