@@ -20,8 +20,8 @@ android {
         applicationId = "dev.marufeuille.intervo"
         minSdk = 30
         targetSdk = 36
-        versionCode = 17
-        versionName = "1.6.0"
+        versionCode = 19
+        versionName = "1.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -90,6 +90,13 @@ dependencies {
     implementation(libs.health.services.client)
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.play.services.wearable)
+
+    // Wear OS Tile + Complication
+    implementation(libs.wear.tiles)
+    implementation(libs.wear.protolayout)
+    implementation(libs.wear.protolayout.material)
+    implementation(libs.wear.complications.datasource)
+    debugImplementation(libs.wear.tiles.tooling)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

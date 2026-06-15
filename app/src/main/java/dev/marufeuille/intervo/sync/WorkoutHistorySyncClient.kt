@@ -21,6 +21,7 @@ class WorkoutHistorySyncClient(context: Context) {
     suspend fun send(
         history: WorkoutHistory,
         workoutSortOrder: Int?,
+        workoutExerciseType: String,
         exercises: List<Exercise>,
         exerciseHrRecords: List<ExerciseHrInput> = emptyList(),
         hrSamples: List<HrSample> = emptyList(),
@@ -41,6 +42,7 @@ class WorkoutHistorySyncClient(context: Context) {
                     .put("workout_id", history.workoutId)
                     .put("workout_name", history.workoutName)
                     .put("sort_order", workoutSortOrder)
+                    .put("exercise_type", workoutExerciseType)
                     .toString()
             )
             dataMap.putString(KEY_EXERCISE_SNAPSHOTS_JSON, exercises.toSnapshotJson())

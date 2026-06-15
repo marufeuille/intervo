@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
 import dev.marufeuille.intervo.data.AppDatabase
 import dev.marufeuille.intervo.data.Exercise
+import dev.marufeuille.intervo.data.ExerciseCategory
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.Workout
 import dev.marufeuille.intervo.data.WorkoutRepository
@@ -59,6 +60,7 @@ fun WorkoutDetailScreen(
     onExerciseClick: (String) -> Unit,
     onAddExercise: () -> Unit,
     onStart: () -> Unit,
+    onEdit: () -> Unit,
     vm: WorkoutDetailViewModel = viewModel()
 ) {
     val exercises by vm.exercises.collectAsStateWithLifecycle()
@@ -77,6 +79,28 @@ fun WorkoutDetailScreen(
                     text = workout?.name ?: "",
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     color = TextSecondary, letterSpacing = 1.sp
+                )
+                Spacer(Modifier.height(8.dp))
+                Chip(
+                    label = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("種別", fontSize = 10.sp, color = TextSecondary)
+                                Text(
+                                    ExerciseCategory.fromKey(workout?.exerciseType).label,
+                                    fontSize = 13.sp, color = TextPrimary
+                                )
+                            }
+                            Text("✎ 編集", fontSize = 12.sp, color = ExerciseOrange)
+                        }
+                    },
+                    onClick = onEdit,
+                    colors = ChipDefaults.chipColors(backgroundColor = SurfaceDark),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
             }

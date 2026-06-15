@@ -1,6 +1,7 @@
 package dev.marufeuille.intervo.ui.screens
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +16,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material.*
 import dev.marufeuille.intervo.data.AppDatabase
+import dev.marufeuille.intervo.data.ExerciseCategory
 import dev.marufeuille.intervo.data.Workout
 import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.ui.theme.*
@@ -26,6 +28,7 @@ class WorkoutEditViewModel(app: Application, saved: SavedStateHandle) : AndroidV
     private val repo = WorkoutRepository(AppDatabase.getInstance(app))
     val workoutId: String? = saved["workoutId"]
     var name by mutableStateOf("")
+    var exerciseType by mutableStateOf(ExerciseCategory.DEFAULT)
     private var existingWorkout: Workout? = null
 
     init {
@@ -35,6 +38,7 @@ class WorkoutEditViewModel(app: Application, saved: SavedStateHandle) : AndroidV
                     list.find { it.id == id }?.let {
                         existingWorkout = it
                         name = it.name
+                        exerciseType = ExerciseCategory.fromKey(it.exerciseType)
                     }
                 }
             }
@@ -44,10 +48,10 @@ class WorkoutEditViewModel(app: Application, saved: SavedStateHandle) : AndroidV
     suspend fun save(): String {
         val existing = existingWorkout
         return if (existing != null) {
-            repo.updateWorkout(existing.copy(name = name))
+            repo.updateWorkout(existing.copy(name = name, exerciseType = exerciseType.name))
             existing.id
         } else {
-            repo.addWorkout(name).id
+            repo.addWorkout(name, exerciseType.name).id
         }
     }
 }
@@ -62,6 +66,7 @@ fun WorkoutEditScreen(
     val scope = rememberCoroutineScope()
     var error by remember { mutableStateOf(false) }
     var showInput by remember { mutableStateOf(false) }
+    var showCategory by remember { mutableStateOf(false) }
 
     Scaffold(timeText = { TimeText() }) {
         ScalingLazyColumn(
@@ -89,6 +94,20 @@ fun WorkoutEditScreen(
                     colors = ChipDefaults.chipColors(
                         backgroundColor = if (vm.name.isBlank()) SurfaceDark else ExerciseOrange
                     ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Spacer(Modifier.height(8.dp))
+                Chip(
+                    label = {
+                        Column {
+                            Text("種別", color = TextSecondary, fontSize = 11.sp)
+                            Text(vm.exerciseType.label, color = TextPrimary, fontSize = 14.sp)
+                        }
+                    },
+                    onClick = { showCategory = true },
+                    colors = ChipDefaults.chipColors(backgroundColor = SurfaceDark),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -123,5 +142,55 @@ fun WorkoutEditScreen(
             onConfirm = { vm.name = it; error = false; showInput = false },
             onDismiss = { showInput = false }
         )
+    }
+
+    if (showCategory) {
+        CategoryPickerScreen(
+            selected = vm.exerciseType,
+            onSelect = { vm.exerciseType = it; showCategory = false }
+        )
+    }
+}
+
+@Composable
+private fun CategoryPickerScreen(
+    selected: ExerciseCategory,
+    onSelect: (ExerciseCategory) -> Unit
+) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize().background(Color.Black),
+        timeText = { TimeText() }
+    ) {
+        ScalingLazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 28.dp)
+        ) {
+            item {
+                Text(
+                    text = "種別を選択",
+                    fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            items(ExerciseCategory.entries.size) { index ->
+                val category = ExerciseCategory.entries[index]
+                val isSelected = category == selected
+                Chip(
+                    label = {
+                        Text(
+                            text = category.label,
+                            color = if (isSelected) Color.White else TextPrimary,
+                            fontSize = 14.sp
+                        )
+                    },
+                    onClick = { onSelect(category) },
+                    colors = ChipDefaults.chipColors(
+                        backgroundColor = if (isSelected) ExerciseOrange else SurfaceDark
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
     }
 }

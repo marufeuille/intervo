@@ -14,6 +14,9 @@ import dev.marufeuille.intervo.timer.TimerViewModel
 import dev.marufeuille.intervo.ui.navigation.AppNavigation
 import dev.marufeuille.intervo.ui.theme.IntervalTheme
 
+/** Tile / Complication からワークアウト詳細を開くための Intent extra キー */
+const val EXTRA_WORKOUT_ID = "dev.marufeuille.intervo.extra.WORKOUT_ID"
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var timerViewModel: TimerViewModel
@@ -40,9 +43,11 @@ class MainActivity : ComponentActivity() {
         })
         lifecycle.addObserver(ambientObserver)
 
+        val initialWorkoutId = intent?.getStringExtra(EXTRA_WORKOUT_ID)
+
         setContent {
             IntervalTheme {
-                AppNavigation()
+                AppNavigation(initialWorkoutId = initialWorkoutId)
             }
         }
     }

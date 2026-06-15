@@ -2,8 +2,8 @@ package dev.marufeuille.intervo.data
 
 object DefaultWorkouts {
     suspend fun insert(db: AppDatabase) {
-        val upperBody = Workout(name = "上半身", sortOrder = 0)
-        val lowerBody = Workout(name = "下半身", sortOrder = 1)
+        val upperBody = Workout(name = "上半身", sortOrder = 0, exerciseType = ExerciseCategory.STRENGTH_TRAINING.name)
+        val lowerBody = Workout(name = "下半身", sortOrder = 1, exerciseType = ExerciseCategory.STRENGTH_TRAINING.name)
         db.workoutDao().insert(upperBody)
         db.workoutDao().insert(lowerBody)
 

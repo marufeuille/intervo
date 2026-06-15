@@ -23,9 +23,12 @@ class WorkoutRepository(
     fun exerciseCount(workoutId: String): Flow<Int> =
         db.exerciseDao().countByWorkout(workoutId)
 
-    suspend fun addWorkout(name: String): Workout {
+    suspend fun addWorkout(
+        name: String,
+        exerciseType: String = ExerciseCategory.DEFAULT.name,
+    ): Workout {
         val count = db.workoutDao().count()
-        val workout = Workout(name = name, sortOrder = count)
+        val workout = Workout(name = name, sortOrder = count, exerciseType = exerciseType)
         db.workoutDao().insert(workout)
         return workout
     }
@@ -83,6 +86,7 @@ class WorkoutRepository(
         totalSeconds: Int,
         exerciseCount: Int,
         workoutSortOrder: Int? = null,
+        workoutExerciseType: String = ExerciseCategory.DEFAULT.name,
         exercises: List<Exercise> = emptyList(),
         freeSetRecords: List<FreeSetRecordInput> = emptyList(),
         startHr: Int? = null,
@@ -130,7 +134,7 @@ class WorkoutRepository(
                 }
             )
         }
-        historySyncClient?.send(history, workoutSortOrder, exercises, exerciseHrRecords, hrSamples)
+        historySyncClient?.send(history, workoutSortOrder, workoutExerciseType, exercises, exerciseHrRecords, hrSamples)
         return history
     }
 }
