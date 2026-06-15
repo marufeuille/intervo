@@ -117,9 +117,13 @@ GitHub Actions → Release → 「Run workflow」（workflow_dispatch）。
   本プロジェクトは既に内部テスト運用中のため API 配信可能。
 - 1.7.1（versionCode 21 / 22）はコミット済み。CI 化後の次リリースから semver 採番（107020〜）に切り替わる。
 - 署名鍵・サービスアカウント鍵は私（Claude）は扱わない。ユーザーが GitHub Secrets に登録する。
-- app(Wear) と companion(phone) は applicationId を共有するマルチフォームファクタ構成。
-  両 AAB を 1 リリースに混在させると `requires the Wear OS system feature android.hardware.type.watch`
-  で commit に失敗するため、**フォームファクタごとに別リリースで配信**する（手動運用と同様）。
+- app(Wear) と companion(phone) は applicationId を共有するマルチフォームファクタ構成で、Play 上は
+  **フォームファクタ別トラック**に分かれる。Play Developer API ではフォームファクタ別トラックを
+  `<prefix>:<defaultTrack>` で表す（Wear OS は `wear:` プレフィックス）。本 CI は
+  **app(Wear)=`wear:internal` / companion(phone)=`internal`** にそれぞれ配信する。
+  - 両 AAB を 1 リリースに混在 → `requires the Wear OS system feature android.hardware.type.watch` で失敗。
+  - Wear AAB をデフォルトの `internal`（=phone 用）に出す → `does not allow any existing users to upgrade` で失敗。
+  - 参考: [Manage form factor releases on dedicated tracks](https://support.google.com/googleplay/android-developer/answer/13295490) / [APKs and Tracks](https://developers.google.com/android-publisher/tracks)
 - GCP プロジェクト（`intervo-app`）で **Android Publisher API**（`androidpublisher.googleapis.com`）の
   有効化が必要。未有効だと配信ステップが `API has not been used ... or it is disabled` で失敗する。
   `gcloud services enable androidpublisher.googleapis.com --project=intervo-app`

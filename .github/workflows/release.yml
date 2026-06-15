@@ -80,17 +80,19 @@ jobs:
         run: ./gradlew :app:bundleRelease :companion:bundleRelease
 
       # 内部テストへ配信（tag push のときのみ）。
-      # app(Wear) と companion(phone) は applicationId を共有するマルチフォームファクタ構成。
-      # 両 AAB を 1 リリースに混在させると「watch feature を要求する artifact は publish 不可」で
-      # commit に失敗するため、手動運用と同様にフォームファクタごとの別リリースとして配信する。
-      - name: Upload app (Wear) to Play (internal track)
+      # app(Wear) と companion(phone) は applicationId を共有するマルチフォームファクタ構成で、
+      # Play 上はフォームファクタ別トラックに分かれる。Play Developer API ではフォームファクタ別
+      # トラックを「<prefix>:<defaultTrack>」で表す（Wear OS は wear: プレフィックス）。
+      # → app(Wear)=wear:internal / companion(phone)=internal にそれぞれ配信する。
+      # 1 リリースに両 AAB を混在させたり、Wear を internal に出すと commit に失敗する。
+      - name: Upload app (Wear) to Play (wear:internal track)
         if: github.ref_type == 'tag'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: dev.marufeuille.intervo
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          track: internal
+          track: wear:internal
           status: completed
 
       - name: Upload companion (phone) to Play (internal track)
