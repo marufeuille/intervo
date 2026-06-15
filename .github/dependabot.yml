@@ -1,0 +1,32 @@
+# Dependabot: 依存更新・脆弱性検知の自動化 (Issue #19)
+#
+# - github-actions: 週次・1 PR にグルーピング
+#   （ci.yml/release.yml/validate-release-notes.yml の action の破壊的変更・改ざん対策）
+# - gradle: 月次・グルーピング・PR 上限 5
+#   （androidx の alpha/rc による PR 量産を抑制。version catalog gradle/libs.versions.toml に対応）
+#
+# versionCode は semver から自動採番のため Dependabot が build.gradle.kts を触ることはない。
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+      firebase:
+        patterns:
+          - "com.google.firebase*"
+          - "com.google.gms*"
