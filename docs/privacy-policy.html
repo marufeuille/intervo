@@ -56,8 +56,9 @@
   <ul>
     <li>ワークアウトの計測・表示、および運動履歴の記録・閲覧のため。</li>
     <li>利用者自身の運動データを端末間（ウォッチ／スマートフォン）で同期するため。</li>
-    <li>利用者の希望に応じて、運動データを Health Connect および利用者本人のためのバックエンドに
-      保存するため。</li>
+    <li>運動履歴を利用者本人の記録として保存・管理するため（既定で、コンパニオンアプリが受信した
+      運動履歴はバックエンドへ自動的に送信・保存されます。詳細は次項を参照）。</li>
+    <li>利用者が許可した場合に、運動・心拍記録を Health Connect に保存するため。</li>
   </ul>
 
   <h2>3. データの保存先と第三者提供</h2>
@@ -67,9 +68,11 @@
     <li><strong>Health Connect</strong>: 利用者が許可した場合に限り、運動セッションおよび心拍記録を
       Android の Health Connect に書き込みます。Health Connect 内のデータの取り扱いは、
       利用者の端末および Google の管理下にあります。</li>
-    <li><strong>バックエンド（Google Cloud / Firebase）</strong>: 運動履歴は、利用者本人の記録管理を
-      目的として、開発者が運用する Google Cloud（Cloud Functions / BigQuery）上のバックエンドへ
-      送信・保存される場合があります。通信は Firebase Authentication および App Check により保護されます。</li>
+    <li><strong>バックエンド（Google Cloud / Firebase）</strong>: スマートフォン用コンパニオンアプリは、
+      ウォッチから運動履歴を受信すると、<strong>既定で自動的に</strong>その運動履歴（心拍データを含む）を
+      開発者が運用する Google Cloud（Cloud Functions / BigQuery）上のバックエンドへ送信・保存します。
+      これは利用者本人の記録管理を目的としたもので、通信は Firebase Authentication および App Check により
+      保護されます。送信先のエンドポイントはアプリの設定画面で変更でき、空に設定した場合は送信を行いません。</li>
   </ul>
   <p>
     本アプリは、上記の目的以外で利用者のデータを第三者へ販売・提供することはありません。
