@@ -32,6 +32,7 @@ import dev.marufeuille.intervo.timer.TimerState
 import dev.marufeuille.intervo.ui.navigation.AppNavigation
 import dev.marufeuille.intervo.ui.screens.SKIP_BUTTON_TAG
 import dev.marufeuille.intervo.ui.theme.IntervalTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -88,7 +89,8 @@ class WorkoutCreationE2ETest {
     }
 
     private fun launchApp() {
-        compose.setContent { IntervalTheme { AppNavigation() } }
+        // E2E では Ambient 遷移を検証しないため、常に非 Ambient の固定フローを渡す
+        compose.setContent { IntervalTheme { AppNavigation(ambient = MutableStateFlow(false)) } }
     }
 
     /** テキストが表示されるまで待つヘルパー（DB→Flow 反映やタイマー進行は非同期なため）。
