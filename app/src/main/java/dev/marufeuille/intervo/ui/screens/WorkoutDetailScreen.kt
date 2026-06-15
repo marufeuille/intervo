@@ -75,34 +75,39 @@ fun WorkoutDetailScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 28.dp)
         ) {
             item {
-                Text(
-                    text = workout?.name ?: "",
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary, letterSpacing = 1.sp
-                )
-                Spacer(Modifier.height(8.dp))
-                Chip(
-                    label = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text("種別", fontSize = 10.sp, color = TextSecondary)
-                                Text(
-                                    ExerciseCategory.fromKey(workout?.exerciseType).label,
-                                    fontSize = 13.sp, color = TextPrimary
-                                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = workout?.name ?: "",
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        color = TextSecondary, letterSpacing = 1.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Chip(
+                        label = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("種別", fontSize = 10.sp, color = TextSecondary)
+                                    Text(
+                                        ExerciseCategory.fromKey(workout?.exerciseType).label,
+                                        fontSize = 13.sp, color = TextPrimary
+                                    )
+                                }
+                                Text("✎ 編集", fontSize = 12.sp, color = ExerciseOrange)
                             }
-                            Text("✎ 編集", fontSize = 12.sp, color = ExerciseOrange)
-                        }
-                    },
-                    onClick = onEdit,
-                    colors = ChipDefaults.chipColors(backgroundColor = SurfaceDark),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
+                        },
+                        onClick = onEdit,
+                        colors = ChipDefaults.chipColors(backgroundColor = SurfaceDark),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
             }
 
             if (exercises.isEmpty()) {
