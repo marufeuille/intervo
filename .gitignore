@@ -36,3 +36,6 @@ proguard/
 
 # Kotlin
 .kotlin/
+
+# CI が生成する Play 用リリースノート（whatsnew-<locale>）
+whatsnew/
