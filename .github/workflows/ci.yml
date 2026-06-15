@@ -3,7 +3,16 @@ name: CI
 on:
   push:
     branches: [main]
+    # ドキュメントのみの変更ではビルド/E2E を回さない（変更が全て docs/** か Markdown のときスキップ）
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - LICENSE
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - LICENSE
 
 # JS アクションを Node.js 24 で実行（Node.js 20 廃止予告の解消）
 env:
