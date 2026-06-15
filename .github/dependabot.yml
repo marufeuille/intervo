@@ -36,6 +36,21 @@ updates:
       # Kotlin 2.3.0+ は対応する KSP が未リリース（Room の KSP が動かない）
       - dependency-name: "org.jetbrains.kotlin:*"
         versions: [">=2.3.0"]
+      # KSP は org.jetbrains.kotlin:* に一致しない別 artifact。2.3.0+ は Kotlin 2.3 必須で
+      # プラグイン適用に失敗する（PR #37 で確認）。
+      - dependency-name: "com.google.devtools.ksp"
+        versions: [">=2.3.0"]
+      # AGP 9.x は Gradle 9.4.1+ / compileSdk 37 を要求しツールチェーン移行が前提
+      # （PR #35 は "Minimum supported Gradle version is 9.4.1" で失敗）。
+      - dependency-name: "com.android.application"
+        versions: [">=9.0.0"]
+      - dependency-name: "com.android.library"
+        versions: [">=9.0.0"]
+      - dependency-name: "com.android.tools.build:gradle"
+        versions: [">=9.0.0"]
+      # Gradle wrapper 9.x は AGP9 移行とセット。単体ではビルドが通っても据え置く。
+      - dependency-name: "gradle"
+        versions: [">=9.0"]
     groups:
       androidx:
         patterns:
