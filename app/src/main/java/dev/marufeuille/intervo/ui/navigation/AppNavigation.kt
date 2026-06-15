@@ -4,8 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -13,6 +15,7 @@ import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import dev.marufeuille.intervo.ui.screens.*
+import kotlinx.coroutines.flow.StateFlow
 
 object Routes {
     const val WORKOUT_SELECT = "workout_select"
@@ -34,7 +37,7 @@ object Routes {
 }
 
 @Composable
-fun AppNavigation(initialWorkoutId: String? = null) {
+fun AppNavigation(initialWorkoutId: String? = null, ambient: StateFlow<Boolean>) {
     val navController = rememberSwipeDismissableNavController()
     val currentRoute = remember { mutableStateOf<String?>(null) }
 
@@ -117,9 +120,11 @@ fun AppNavigation(initialWorkoutId: String? = null) {
                 navArgument("resume") { type = NavType.BoolType; defaultValue = false }
             )
         ) { back ->
+            val isAmbient by ambient.collectAsStateWithLifecycle()
             TimerScreen(
                 workoutId = back.arguments!!.getString("workoutId")!!,
                 resume = back.arguments!!.getBoolean("resume"),
+                isAmbient = isAmbient,
                 onComplete = { totalSeconds ->
                     navController.navigate(Routes.completion(totalSeconds)) {
                         popUpTo(Routes.WORKOUT_SELECT)

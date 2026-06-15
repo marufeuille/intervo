@@ -27,11 +27,11 @@ fun TimerScreen(
     workoutId: String,
     onComplete: (totalSeconds: Int) -> Unit,
     onStop: () -> Unit,
+    isAmbient: Boolean = false,
     resume: Boolean = false,
     vm: TimerViewModel = viewModel()
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val isAmbient by vm.isAmbient.collectAsStateWithLifecycle()
     var showStopDialog by remember { mutableStateOf(false) }
     var freeSetReview by remember { mutableStateOf<FreeSetReview?>(null) }
 

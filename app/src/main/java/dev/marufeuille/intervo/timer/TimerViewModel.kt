@@ -18,9 +18,6 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableStateFlow(TimerState())
     val state: StateFlow<TimerState> = _state.asStateFlow()
 
-    private val _isAmbient = MutableStateFlow(false)
-    val isAmbient: StateFlow<Boolean> = _isAmbient.asStateFlow()
-
     private var timerService: TimerService? = null
     private var pendingStart: Pair<String, Boolean>? = null
 
@@ -67,6 +64,4 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun finishFreeSet(reps: Int? = null) { timerService?.finishFreeSet(reps) }
     fun finishOpenEndedRepSet() { timerService?.finishOpenEndedRepSet() }
     fun stop() { timerService?.stop() }
-
-    fun setAmbient(ambient: Boolean) { _isAmbient.value = ambient }
 }
