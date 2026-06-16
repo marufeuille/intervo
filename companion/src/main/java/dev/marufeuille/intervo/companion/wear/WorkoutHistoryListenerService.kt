@@ -54,7 +54,6 @@ class WorkoutHistoryListenerService : WearableListenerService() {
                 runCatching { Wearable.getDataClient(applicationContext).deleteDataItems(uri) }
             }
             repository.writePendingHealthConnect()
-            repository.syncPending()
         }
     }
 

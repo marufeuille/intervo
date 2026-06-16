@@ -47,7 +47,6 @@
 
 - [ビルド・実機インストール手順](docs/build.md)
 - [実装計画](docs/plan/wear-os-interval-timer.md)
-- [Companion app と BigQuery 同期](docs/companion-bigquery.md)
 - [E2E テスト（シナリオベース）](docs/e2e-testing.md)
 
 ## ライセンス

@@ -11,20 +11,11 @@ interface CompanionWorkoutHistoryDao {
     @Query("SELECT * FROM companion_workout_history ORDER BY completedAt DESC")
     fun getAll(): Flow<List<CompanionWorkoutHistory>>
 
-    @Query("SELECT COUNT(*) FROM companion_workout_history WHERE syncedAt IS NULL AND syncAttempts < :maxAttempts")
-    fun pendingCount(maxAttempts: Int): Flow<Int>
-
-    @Query("SELECT * FROM companion_workout_history WHERE syncedAt IS NULL AND syncAttempts < :maxAttempts ORDER BY completedAt ASC")
-    suspend fun getPending(maxAttempts: Int): List<CompanionWorkoutHistory>
+    @Query("SELECT COUNT(*) FROM companion_workout_history WHERE healthConnectWrittenAt IS NULL")
+    fun pendingHealthConnectCount(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIgnore(history: CompanionWorkoutHistory): Long
-
-    @Query("UPDATE companion_workout_history SET syncedAt = :syncedAt, syncError = NULL WHERE id = :id")
-    suspend fun markSynced(id: String, syncedAt: Long)
-
-    @Query("UPDATE companion_workout_history SET syncError = :message, syncAttempts = syncAttempts + 1, lastSyncAttemptAt = :attemptedAt WHERE id = :id")
-    suspend fun markSyncError(id: String, message: String, attemptedAt: Long)
 
     @Query("SELECT * FROM companion_workout_history WHERE healthConnectWrittenAt IS NULL ORDER BY completedAt ASC")
     suspend fun getPendingHealthConnect(): List<CompanionWorkoutHistory>

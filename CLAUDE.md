@@ -3,7 +3,7 @@
 Intervo は Wear OS 向けインターバル・トレーニングタイマー。2 モジュール構成:
 
 - `app` — Wear OS アプリ（ワークアウト計測・心拍取得・Tile/Complication）
-- `companion` — スマートフォン用アプリ（Health Connect 書込・バックエンド同期）。`app` と `applicationId` を共有するマルチフォームファクタ構成。
+- `companion` — スマートフォン用アプリ（ウォッチから受信した完了履歴をローカル保存し Health Connect へ書込）。`app` と `applicationId` を共有するマルチフォームファクタ構成。
 
 ## リリース（タグ駆動 CI/CD）
 
