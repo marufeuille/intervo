@@ -5,7 +5,11 @@ ksp = "2.2.21-2.0.5"
 coroutines = "1.11.0"
 lifecycleRuntime = "2.10.0"
 composeBom = "2026.05.01"
-wearCompose = "1.6.2"
+# Wear OS 6 (API36) で wearCompose 1.5+ の predictive back 統合により
+# SwipeDismissableNavHost のスワイプバックが機能しなくなる退行があるため、
+# predictive back 導入前の 1.4 系（1.4.1=1.4系最終）に意図的に固定する。安易に上げない。
+# 1.6+ への再推進は #41 で追跡。
+wearCompose = "1.4.1"
 wear = "1.4.0"
 wearInput = "1.2.0"
 wearOngoing = "1.1.0"

@@ -51,6 +51,11 @@ updates:
       # Gradle wrapper 9.x は AGP9 移行とセット。単体ではビルドが通っても据え置く。
       - dependency-name: "gradle"
         versions: [">=9.0"]
+      # Wear Compose 1.5+ は API36(Wear OS 6) で SwipeDismissableNavHost のスワイプバックが
+      # predictive back 統合により機能しなくなる退行があるため 1.4 系に固定する
+      # （上記ツールチェーン据え置きとは別件。1.6→ 再推進は #41 で追跡）。
+      - dependency-name: "androidx.wear.compose:*"
+        versions: [">=1.5.0"]
     groups:
       androidx:
         patterns:
