@@ -19,9 +19,5 @@ data class CompanionWorkoutHistory(
     val exerciseHrJson: String = "[]",
     val hrSamplesJson: String = "[]",
     val receivedAt: Long = System.currentTimeMillis(),
-    val syncedAt: Long? = null,
-    val syncError: String? = null,
-    val syncAttempts: Int = 0,
-    val lastSyncAttemptAt: Long? = null,
     val healthConnectWrittenAt: Long? = null,
 )

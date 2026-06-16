@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services)
 }
 
 val keystoreProps = Properties().also { props ->
@@ -36,11 +35,6 @@ android {
         targetSdk = 36
         versionCode = versionCodeFrom(resolvedVersionName, 1)
         versionName = resolvedVersionName
-        buildConfigField(
-            "String",
-            "DEFAULT_INGEST_ENDPOINT",
-            "\"https://asia-northeast1-intervo-app.cloudfunctions.net/ingestWorkoutHistory\""
-        )
     }
 
     signingConfigs {
@@ -98,12 +92,6 @@ dependencies {
 
     implementation(libs.play.services.wearable)
     implementation(libs.health.connect.client)
-
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.appcheck)
-    implementation(libs.firebase.appcheck.playintegrity)
-    debugImplementation(libs.firebase.appcheck.debug)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

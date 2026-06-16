@@ -16,11 +16,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,7 +32,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
 import dev.marufeuille.intervo.companion.health.HealthConnectWriter
-import dev.marufeuille.intervo.companion.sync.CompanionRepository
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -43,11 +40,7 @@ import java.util.Locale
 @Composable
 fun CompanionApp(vm: CompanionViewModel = viewModel()) {
     val histories by vm.histories.collectAsStateWithLifecycle()
-    val pendingCount by vm.pendingCount.collectAsStateWithLifecycle()
-    val endpoint by vm.endpoint.collectAsStateWithLifecycle()
-    val isSyncing by vm.isSyncing.collectAsStateWithLifecycle()
-    val statusMessage by vm.statusMessage.collectAsStateWithLifecycle()
-    val authUid by vm.authUid.collectAsStateWithLifecycle()
+    val pendingHealthConnect by vm.pendingHealthConnect.collectAsStateWithLifecycle()
     val hcPermitted by vm.healthConnectPermitted.collectAsStateWithLifecycle()
     val hcStatus by vm.healthConnectStatus.collectAsStateWithLifecycle()
 
@@ -64,7 +57,7 @@ fun CompanionApp(vm: CompanionViewModel = viewModel()) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Header(pendingCount = pendingCount)
+                Header(pendingHealthConnect = pendingHealthConnect)
             }
             item {
                 HealthConnectPanel(
@@ -72,19 +65,6 @@ fun CompanionApp(vm: CompanionViewModel = viewModel()) {
                     permitted = hcPermitted,
                     status = hcStatus,
                     onConnect = { hcPermissionLauncher.launch(HealthConnectWriter.PERMISSIONS) },
-                )
-            }
-            item {
-                SyncPanel(
-                    endpoint = endpoint,
-                    pendingCount = pendingCount,
-                    isSyncing = isSyncing,
-                    statusMessage = statusMessage,
-                    authUid = authUid,
-                    onEndpointChange = vm::onEndpointChange,
-                    onSaveEndpoint = vm::saveEndpoint,
-                    onPrepareAuth = vm::prepareAuth,
-                    onSync = vm::syncNow,
                 )
             }
             item {
@@ -108,7 +88,7 @@ fun CompanionApp(vm: CompanionViewModel = viewModel()) {
 }
 
 @Composable
-private fun Header(pendingCount: Int) {
+private fun Header(pendingHealthConnect: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = "Intervo Companion",
@@ -116,78 +96,14 @@ private fun Header(pendingCount: Int) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = if (pendingCount > 0) "未送信 $pendingCount 件" else "BigQuery 同期済み",
+            text = if (pendingHealthConnect > 0) {
+                "Health Connect 未書き込み $pendingHealthConnect 件"
+            } else {
+                "すべて Health Connect 連携済み"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-private fun SyncPanel(
-    endpoint: String,
-    pendingCount: Int,
-    isSyncing: Boolean,
-    statusMessage: String,
-    authUid: String,
-    onEndpointChange: (String) -> Unit,
-    onSaveEndpoint: () -> Unit,
-    onPrepareAuth: () -> Unit,
-    onSync: () -> Unit,
-) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "BigQuery 送信",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            OutlinedTextField(
-                value = endpoint,
-                onValueChange = onEndpointChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text("取り込み API URL") },
-                placeholder = { Text("https://.../workout-history") }
-            )
-            Text(
-                text = if (authUid.isBlank()) "Firebase UID 未取得" else "Firebase UID: $authUid",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = statusMessage,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.width(12.dp))
-                TextButton(onClick = onSaveEndpoint) {
-                    Text("保存")
-                }
-                TextButton(onClick = onPrepareAuth) {
-                    Text("認証")
-                }
-                Button(
-                    onClick = onSync,
-                    enabled = !isSyncing && pendingCount > 0
-                ) {
-                    Text(if (isSyncing) "送信中" else "送信")
-                }
-            }
-        }
     }
 }
 
@@ -260,14 +176,8 @@ private fun EmptyState() {
 private fun HistoryRow(history: CompanionWorkoutHistory) {
     val dateLabel = DateFormatter.format(Instant.ofEpochMilli(history.completedAt))
     val duration = formatDuration(history.totalSeconds)
-    val isStopped = history.syncedAt == null &&
-        history.syncAttempts >= CompanionRepository.MAX_AUTO_SYNC_ATTEMPTS
-    val syncLabel = when {
-        history.syncedAt != null -> "送信済み"
-        isStopped -> "停止"
-        history.syncAttempts > 0 -> "再試行待ち"
-        else -> "未送信"
-    }
+    val written = history.healthConnectWrittenAt != null
+    val statusLabel = if (written) "連携済み" else "未連携"
 
     Column(
         modifier = Modifier
@@ -296,27 +206,13 @@ private fun HistoryRow(history: CompanionWorkoutHistory) {
             }
             Spacer(Modifier.width(16.dp))
             Text(
-                text = syncLabel,
+                text = statusLabel,
                 style = MaterialTheme.typography.labelMedium,
-                color = when {
-                    history.syncedAt != null -> MaterialTheme.colorScheme.secondary
-                    isStopped -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.primary
+                color = if (written) {
+                    MaterialTheme.colorScheme.secondary
+                } else {
+                    MaterialTheme.colorScheme.primary
                 }
-            )
-        }
-        if (history.syncError != null) {
-            val errorPrefix = if (isStopped) {
-                "${history.syncAttempts}回失敗。自動再送を停止: "
-            } else {
-                "${history.syncAttempts}回失敗: "
-            }
-            Text(
-                text = errorPrefix + history.syncError,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
             )
         }
         HorizontalDivider()
