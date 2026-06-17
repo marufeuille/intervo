@@ -23,6 +23,7 @@ object WorkoutDetailMapper {
             avgHr = history.avgHr,
             maxHr = history.maxHr,
             healthConnectWritten = history.healthConnectWrittenAt != null,
+            pdsSynced = history.pdsSyncedAt != null,
             exercises = exercises,
         )
     }

@@ -200,6 +200,8 @@ class TimerService : Service() {
 
     fun finishOpenEndedRepSet() = applyUserAction { TimerEngine.finishOpenEndedRepSet(it) }
 
+    fun finishCurrentSet() = applyUserAction { TimerEngine.finishCurrentSet(it) }
+
     fun stop() {
         countdownJob?.cancel()
         stopHeartRate()
@@ -284,6 +286,7 @@ class TimerService : Service() {
                     workoutExerciseType = workoutExerciseType,
                     exercises = finalState.exercises,
                     freeSetRecords = finalState.freeSetRecords,
+                    performedSetRecords = finalState.performedSetRecords,
                     startHr = hrAccumulator.startHr(),
                     avgHr = hrAccumulator.avgHr(),
                     maxHr = hrAccumulator.maxHr(),

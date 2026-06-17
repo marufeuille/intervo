@@ -6,6 +6,7 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseHrInput
+import dev.marufeuille.intervo.data.PerformedSetRecordInput
 import dev.marufeuille.intervo.data.WorkoutHistory
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import dev.marufeuille.intervo.timer.HrSample
@@ -25,6 +26,7 @@ class WorkoutHistorySyncClient(context: Context) {
         exercises: List<Exercise>,
         exerciseHrRecords: List<ExerciseHrInput> = emptyList(),
         hrSamples: List<HrSample> = emptyList(),
+        performedSetRecords: List<PerformedSetRecordInput> = emptyList(),
     ) {
         val request = PutDataMapRequest.create("$PATH_PREFIX/${history.id}").apply {
             dataMap.putString(KEY_ID, history.id)
@@ -48,6 +50,7 @@ class WorkoutHistorySyncClient(context: Context) {
             dataMap.putString(KEY_EXERCISE_SNAPSHOTS_JSON, exercises.toSnapshotJson())
             dataMap.putString(KEY_EXERCISE_HR_JSON, exerciseHrRecords.toExerciseHrJson())
             dataMap.putString(KEY_HR_SAMPLES_JSON, hrSamples.toSamplesJson())
+            dataMap.putString(KEY_PERFORMED_SETS_JSON, performedSetRecords.toPerformedSetsJson())
         }.asPutDataRequest().setUrgent()
 
         dataClient.putDataItem(request).awaitTask()
@@ -75,6 +78,7 @@ class WorkoutHistorySyncClient(context: Context) {
         const val KEY_MAX_HR = "max_hr"
         const val KEY_EXERCISE_HR_JSON = "exercise_hr_json"
         const val KEY_HR_SAMPLES_JSON = "hr_samples_json"
+        const val KEY_PERFORMED_SETS_JSON = "performed_sets_json"
     }
 }
 
@@ -100,6 +104,25 @@ private fun List<HrSample>.toSamplesJson(): String {
             JSONObject()
                 .put("t", sample.timeMillis)
                 .put("bpm", sample.bpm)
+        )
+    }
+    return array.toString()
+}
+
+private fun List<PerformedSetRecordInput>.toPerformedSetsJson(): String {
+    val array = JSONArray()
+    forEach { record ->
+        array.put(
+            JSONObject()
+                .put("exercise_index", record.exerciseIndex)
+                .put("exercise_name", record.exerciseName)
+                .put("set_index", record.setIndex)
+                .put("completed", record.completed)
+                .put("sort_order", record.sortOrder)
+                .apply {
+                    record.durationSeconds?.let { put("duration_seconds", it) }
+                    record.reps?.let { put("reps", it) }
+                }
         )
     }
     return array.toString()

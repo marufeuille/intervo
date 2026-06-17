@@ -78,6 +78,7 @@ android {
 
 dependencies {
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel.compose)
@@ -97,4 +98,6 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    testImplementation(libs.junit)
 }

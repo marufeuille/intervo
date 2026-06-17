@@ -15,15 +15,27 @@ class HistoryListViewModel(private val repository: CompanionRepository) : ViewMo
     data class UiState(
         val histories: List<CompanionWorkoutHistory> = emptyList(),
         val pendingHealthConnect: Int = 0,
+        val pendingPds: Int = 0,
     )
 
     val uiState: StateFlow<UiState> =
-        combine(repository.histories, repository.pendingHealthConnectCount) { histories, pending ->
-            UiState(histories = histories, pendingHealthConnect = pending)
+        combine(
+            repository.histories,
+            repository.pendingHealthConnectCount,
+            repository.pendingPdsCount,
+        ) { histories, pendingHealthConnect, pendingPds ->
+            UiState(
+                histories = histories,
+                pendingHealthConnect = pendingHealthConnect,
+                pendingPds = pendingPds,
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
 
-    /** Health Connect 未書き込みぶんの再送を試みる（権限が無ければ何もしない）。 */
-    fun retryHealthConnect() {
-        viewModelScope.launch { runCatching { repository.writePendingHealthConnect() } }
+    /** 未同期ぶんの再送を試みる（権限/設定が無ければ何もしない）。 */
+    fun retrySync() {
+        viewModelScope.launch {
+            runCatching { repository.writePendingHealthConnect() }
+            runCatching { repository.writePendingPds() }
+        }
     }
 }

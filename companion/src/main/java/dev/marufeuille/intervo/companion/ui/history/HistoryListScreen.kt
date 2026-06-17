@@ -57,8 +57,8 @@ fun HistoryListScreen(
             TopAppBar(
                 title = { Text("履歴") },
                 actions = {
-                    IconButton(onClick = vm::retryHealthConnect) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "Health Connect を再同期")
+                    IconButton(onClick = vm::retrySync) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = "連携を再同期")
                     }
                 },
             )
@@ -120,6 +120,11 @@ private fun HistoryCard(history: CompanionWorkoutHistory, onClick: () -> Unit) {
         StatusChip(
             text = if (hcWritten) "Health Connect 連携済み" else "Health Connect 未連携",
             kind = if (hcWritten) ChipKind.Done else ChipKind.Pending,
+        )
+        val pdsSynced = history.pdsSyncedAt != null
+        StatusChip(
+            text = if (pdsSynced) "PDS 同期済み" else "PDS 未同期",
+            kind = if (pdsSynced) ChipKind.Pds else ChipKind.Pending,
         )
     }
 }

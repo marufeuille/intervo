@@ -89,6 +89,7 @@ class WorkoutRepository(
         workoutExerciseType: String = ExerciseCategory.DEFAULT.name,
         exercises: List<Exercise> = emptyList(),
         freeSetRecords: List<FreeSetRecordInput> = emptyList(),
+        performedSetRecords: List<PerformedSetRecordInput> = emptyList(),
         startHr: Int? = null,
         avgHr: Int? = null,
         maxHr: Int? = null,
@@ -134,7 +135,15 @@ class WorkoutRepository(
                 }
             )
         }
-        historySyncClient?.send(history, workoutSortOrder, workoutExerciseType, exercises, exerciseHrRecords, hrSamples)
+        historySyncClient?.send(
+            history = history,
+            workoutSortOrder = workoutSortOrder,
+            workoutExerciseType = workoutExerciseType,
+            exercises = exercises,
+            exerciseHrRecords = exerciseHrRecords,
+            hrSamples = hrSamples,
+            performedSetRecords = performedSetRecords,
+        )
         return history
     }
 }

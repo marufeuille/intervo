@@ -102,6 +102,7 @@ class WorkoutSelectViewModel(app: Application) : AndroidViewModel(app) {
                         workoutExerciseType = snapshot.workoutExerciseType,
                         exercises = snapshot.state.exercises,
                         freeSetRecords = snapshot.state.freeSetRecords,
+                        performedSetRecords = snapshot.state.performedSetRecords,
                     )
                 }
             }

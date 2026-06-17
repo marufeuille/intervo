@@ -25,6 +25,47 @@ Debug と Release は別アプリとしてウォッチに共存できる。
 ./gradlew assembleDebug
 ```
 
+### Companion の PDS 直接同期（任意）
+
+`companion` は標準 PDS の XRPC に直接書き込む。設定画面で以下を保存すると、受信済み履歴を
+`dev.marufeuille.workout.session` record として `com.atproto.repo.putRecord` する。
+
+- PDS URL: `https://pds.marufeuille.dev` など
+- ハンドル: `muffy.pds.marufeuille.dev` など
+- App Password: Bluesky/PDS 側で発行した App Password
+
+App Password は Android Keystore の鍵で暗号化して端末内に保存する。将来 OAuth 化する場合は、この
+App Password 認証部分を OAuth token provider に置き換える。
+
+### Emulator で実 PDS 書き込みを確認する
+
+設定画面で PDS 設定を保存してから、Debug 専用 receiver でダミー履歴を投入できる。
+ダミー履歴には `performed.sets[]` の完了セット、実レップが少ない未完了セット、時間セットの途中終了例を含めている。
+
+```bash
+./gradlew :companion:installDebug
+
+adb shell am broadcast \
+  -n dev.marufeuille.intervo.debug/dev.marufeuille.intervo.companion.debug.DebugWorkoutHistoryReceiver \
+  -a dev.marufeuille.intervo.DEBUG_SEED_WORKOUT_HISTORY \
+  --es sourceRef emulator-test-001
+```
+
+ADB だけで一度に設定と送信を行う場合は、Debug 専用 extra を使える（App Password はログに出さない）。
+
+```bash
+adb shell am broadcast \
+  -n dev.marufeuille.intervo.debug/dev.marufeuille.intervo.companion.debug.DebugWorkoutHistoryReceiver \
+  -a dev.marufeuille.intervo.DEBUG_SEED_WORKOUT_HISTORY \
+  --es sourceRef emulator-test-001 \
+  --es pdsUrl https://pds.marufeuille.dev \
+  --es identifier muffy.pds.marufeuille.dev \
+  --es appPassword '<APP_PASSWORD>'
+```
+
+同じ `sourceRef` で再実行すると、PDS では同一 rkey へのべき等 upsert になる。Room へ入れるだけで
+同期しない場合は `--ez sync false` を付ける。
+
 ### Wi-Fi ADB で接続・インストール
 
 1. ウォッチ側: 設定 → 一般 → 開発者向けオプション → ADB デバッグ ON → Wi-Fi 経由のデバッグ ON

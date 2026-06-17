@@ -40,6 +40,7 @@ class WorkoutHistoryListenerService : WearableListenerService() {
                     maxHr = dataMap.getInt(KEY_MAX_HR, 0).takeIf { it > 0 },
                     exerciseHrJson = dataMap.getString(KEY_EXERCISE_HR_JSON).orEmpty().ifBlank { "[]" },
                     hrSamplesJson = dataMap.getString(KEY_HR_SAMPLES_JSON).orEmpty().ifBlank { "[]" },
+                    performedSetsJson = dataMap.getString(KEY_PERFORMED_SETS_JSON).orEmpty().ifBlank { "[]" },
                 )
             }
             .filter { it.second.id.isNotBlank() }
@@ -54,6 +55,7 @@ class WorkoutHistoryListenerService : WearableListenerService() {
                 runCatching { Wearable.getDataClient(applicationContext).deleteDataItems(uri) }
             }
             repository.writePendingHealthConnect()
+            repository.writePendingPds()
         }
     }
 
@@ -77,5 +79,6 @@ class WorkoutHistoryListenerService : WearableListenerService() {
         private const val KEY_MAX_HR = "max_hr"
         private const val KEY_EXERCISE_HR_JSON = "exercise_hr_json"
         private const val KEY_HR_SAMPLES_JSON = "hr_samples_json"
+        private const val KEY_PERFORMED_SETS_JSON = "performed_sets_json"
     }
 }

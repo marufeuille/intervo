@@ -52,6 +52,9 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     val vm = companionViewModel { SettingsViewModel(it.repository) }
     val permitted by vm.healthConnectPermitted.collectAsStateWithLifecycle()
     val status by vm.healthConnectStatus.collectAsStateWithLifecycle()
+    val pdsStatus by vm.pdsStatus.collectAsStateWithLifecycle()
+    val pdsSettings by vm.pdsSettings.collectAsStateWithLifecycle()
+    val pendingPds by vm.pendingPdsCount.collectAsStateWithLifecycle()
 
     val hcPermissionLauncher = rememberLauncherForActivityResult(
         contract = PermissionController.createRequestPermissionResultContract(),
@@ -77,7 +80,17 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 status = status,
                 onConnect = { hcPermissionLauncher.launch(HealthConnectWriter.PERMISSIONS) },
             )
-            BlueskyCard()
+            PdsCard(
+                serviceUrl = pdsSettings.serviceUrl,
+                identifier = pdsSettings.identifier,
+                hasAppPassword = pdsSettings.hasAppPassword,
+                configured = pdsSettings.isConfigured,
+                pendingCount = pendingPds,
+                status = pdsStatus,
+                onSave = vm::savePdsSettings,
+                onClear = vm::clearPdsSettings,
+                onSync = vm::retryPds,
+            )
         }
     }
 }
@@ -114,58 +127,89 @@ private fun HealthConnectCard(
 }
 
 @Composable
-private fun BlueskyCard() {
-    var handle by rememberSaveable { mutableStateOf("") }
-    var appPassword by rememberSaveable { mutableStateOf("") }
-    var notice by rememberSaveable { mutableStateOf<String?>(null) }
+private fun PdsCard(
+    serviceUrl: String,
+    identifier: String,
+    hasAppPassword: Boolean,
+    configured: Boolean,
+    pendingCount: Int,
+    status: String,
+    onSave: (serviceUrl: String, identifier: String, appPassword: String) -> Unit,
+    onClear: () -> Unit,
+    onSync: () -> Unit,
+) {
+    var editedServiceUrl by rememberSaveable(serviceUrl) { mutableStateOf(serviceUrl) }
+    var editedIdentifier by rememberSaveable(identifier) { mutableStateOf(identifier) }
+    var appPassword by rememberSaveable(hasAppPassword) { mutableStateOf("") }
+    val canSave = editedServiceUrl.isNotBlank() && editedIdentifier.isNotBlank() &&
+        (appPassword.isNotBlank() || hasAppPassword)
 
-    CompanionCard(modifier = Modifier.fillMaxWidth(), verticalGap = 14) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text("Bluesky / PDS", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    CompanionCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text("Bluesky / PDS", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            StatusChip(
+                text = if (configured) "設定済み" else "未設定",
+                kind = if (configured) ChipKind.Pds else ChipKind.Pending,
+            )
         }
-        Text(
-            text = "お持ちの Bluesky アカウントで認証し、運動ログを自分のリポジトリへ保存します。" +
-                "App Password は Bluesky 設定 → App Passwords で発行してください。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(
+            value = editedServiceUrl,
+            onValueChange = { editedServiceUrl = it },
+            label = { Text("PDS URL") },
+            placeholder = { Text("https://pds.example.com") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
-            value = handle,
-            onValueChange = { handle = it },
+            value = editedIdentifier,
+            onValueChange = { editedIdentifier = it },
             label = { Text("ハンドル") },
-            placeholder = { Text("you.bsky.social") },
+            placeholder = { Text("you.example.com") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = appPassword,
             onValueChange = { appPassword = it },
-            label = { Text("App Password") },
+            label = { Text(if (hasAppPassword) "App Password（保存済み）" else "App Password") },
             placeholder = { Text("xxxx-xxxx-xxxx-xxxx") },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedButton(onClick = { /* App Password 発行ページへの導線は PDS ステップで追加 */ }) {
-                Text("App Password を発行")
-            }
-            Spacer(Modifier.width(8.dp))
-            Button(
-                onClick = { notice = "PDS 連携は次のアップデートで対応します（準備中）" },
-                enabled = handle.isNotBlank() && appPassword.isNotBlank(),
-            ) {
-                Text("ログイン")
-            }
+        if (pendingCount > 0) {
+            Text(
+                text = "${pendingCount}件が PDS 未同期です",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        notice?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            OutlinedButton(onClick = onClear, enabled = configured || editedIdentifier.isNotBlank()) {
+                Text("削除")
+            }
+            Row(horizontalArrangement = Arrangement.End) {
+                OutlinedButton(
+                    onClick = { onSave(editedServiceUrl, editedIdentifier, appPassword) },
+                    enabled = canSave,
+                ) {
+                    Text("保存")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onSync, enabled = configured) {
+                    Text("再同期")
+                }
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseCategory
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
+import dev.marufeuille.intervo.data.PerformedSetRecordInput
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -53,6 +54,9 @@ class TimerSnapshotStore(context: Context) {
         put("freeSetRecords", JSONArray().apply {
             snapshot.state.freeSetRecords.forEach { put(freeSetRecordToJson(it)) }
         })
+        put("performedSetRecords", JSONArray().apply {
+            snapshot.state.performedSetRecords.forEach { put(performedSetRecordToJson(it)) }
+        })
     }
 
     private fun fromJson(json: JSONObject): TimerSnapshot {
@@ -62,6 +66,9 @@ class TimerSnapshotStore(context: Context) {
         val freeSetRecords = json.getJSONArray("freeSetRecords").let { array ->
             (0 until array.length()).map { freeSetRecordFromJson(array.getJSONObject(it)) }
         }
+        val performedSetRecords = json.optJSONArray("performedSetRecords")?.let { array ->
+            (0 until array.length()).map { performedSetRecordFromJson(array.getJSONObject(it)) }
+        }.orEmpty()
         return TimerSnapshot(
             workoutId = json.getString("workoutId"),
             workoutName = json.getString("workoutName"),
@@ -72,7 +79,8 @@ class TimerSnapshotStore(context: Context) {
                 phase = phaseFromJson(json.getJSONObject("phase")),
                 isPaused = false,
                 elapsedSeconds = json.getInt("elapsedSeconds"),
-                freeSetRecords = freeSetRecords
+                freeSetRecords = freeSetRecords,
+                performedSetRecords = performedSetRecords,
             ),
             savedAtEpochMillis = json.getLong("savedAtEpochMillis")
         )
@@ -168,6 +176,26 @@ class TimerSnapshotStore(context: Context) {
         setNumber = json.getInt("setNumber"),
         durationSeconds = json.getInt("durationSeconds"),
         reps = if (json.has("reps")) json.getInt("reps") else null,
+        sortOrder = json.getInt("sortOrder")
+    )
+
+    private fun performedSetRecordToJson(record: PerformedSetRecordInput): JSONObject = JSONObject().apply {
+        put("exerciseIndex", record.exerciseIndex)
+        put("exerciseName", record.exerciseName)
+        put("setIndex", record.setIndex)
+        record.durationSeconds?.let { put("durationSeconds", it) }
+        record.reps?.let { put("reps", it) }
+        put("completed", record.completed)
+        put("sortOrder", record.sortOrder)
+    }
+
+    private fun performedSetRecordFromJson(json: JSONObject): PerformedSetRecordInput = PerformedSetRecordInput(
+        exerciseIndex = json.getInt("exerciseIndex"),
+        exerciseName = json.getString("exerciseName"),
+        setIndex = json.getInt("setIndex"),
+        durationSeconds = if (json.has("durationSeconds")) json.getInt("durationSeconds") else null,
+        reps = if (json.has("reps")) json.getInt("reps") else null,
+        completed = json.optBoolean("completed", true),
         sortOrder = json.getInt("sortOrder")
     )
 }
