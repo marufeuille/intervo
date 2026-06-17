@@ -35,7 +35,7 @@ class PdsCredentialsStore(context: Context) {
 
     fun loadSettings(): PdsAccountSettings =
         PdsAccountSettings(
-            serviceUrl = prefs.getString(KEY_SERVICE_URL, DEFAULT_SERVICE_URL).orEmpty(),
+            serviceUrl = prefs.getString(KEY_SERVICE_URL, "").orEmpty(),
             identifier = prefs.getString(KEY_IDENTIFIER, "").orEmpty(),
             hasAppPassword = prefs.contains(KEY_PASSWORD_CIPHERTEXT) && prefs.contains(KEY_PASSWORD_IV),
         )
@@ -99,8 +99,6 @@ class PdsCredentialsStore(context: Context) {
     }
 
     companion object {
-        const val DEFAULT_SERVICE_URL = "https://pds.marufeuille.dev"
-
         private const val PREFS = "pds_credentials"
         private const val KEY_SERVICE_URL = "service_url"
         private const val KEY_IDENTIFIER = "identifier"
@@ -112,7 +110,7 @@ class PdsCredentialsStore(context: Context) {
         private const val GCM_TAG_BITS = 128
 
         fun String.normalizedServiceUrl(): String =
-            trim().ifBlank { DEFAULT_SERVICE_URL }.trimEnd('/')
+            trim().trimEnd('/')
 
         private fun ByteArray.base64(): String =
             Base64.encodeToString(this, Base64.NO_WRAP)

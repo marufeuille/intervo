@@ -30,8 +30,8 @@ Debug と Release は別アプリとしてウォッチに共存できる。
 `companion` は標準 PDS の XRPC に直接書き込む。設定画面で以下を保存すると、受信済み履歴を
 `dev.marufeuille.workout.session` record として `com.atproto.repo.putRecord` する。
 
-- PDS URL: `https://pds.marufeuille.dev` など
-- ハンドル: `muffy.pds.marufeuille.dev` など
+- PDS URL: `https://pds.example.com` など
+- ハンドル: `you.example.com` など
 - App Password: Bluesky/PDS 側で発行した App Password
 
 App Password は Android Keystore の鍵で暗号化して端末内に保存する。将来 OAuth 化する場合は、この
@@ -58,8 +58,8 @@ adb shell am broadcast \
   -n dev.marufeuille.intervo.debug/dev.marufeuille.intervo.companion.debug.DebugWorkoutHistoryReceiver \
   -a dev.marufeuille.intervo.DEBUG_SEED_WORKOUT_HISTORY \
   --es sourceRef emulator-test-001 \
-  --es pdsUrl https://pds.marufeuille.dev \
-  --es identifier muffy.pds.marufeuille.dev \
+  --es pdsUrl https://pds.example.com \
+  --es identifier you.example.com \
   --es appPassword '<APP_PASSWORD>'
 ```
 
