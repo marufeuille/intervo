@@ -5,8 +5,8 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import dev.marufeuille.intervo.companion.CompanionApplication
 import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
-import dev.marufeuille.intervo.companion.sync.CompanionRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -47,7 +47,7 @@ class WorkoutHistoryListenerService : WearableListenerService() {
         if (received.isEmpty()) return
 
         scope.launch {
-            val repository = CompanionRepository(applicationContext)
+            val repository = (application as CompanionApplication).container.repository
             received.forEach { (uri, history) ->
                 repository.receive(history)
                 // Room に取り込めたら Data Layer 側のアイテムは消す（バッファ肥大化防止）。ベストエフォート。
