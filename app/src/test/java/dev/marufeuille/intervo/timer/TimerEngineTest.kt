@@ -84,6 +84,11 @@ class TimerEngineTest {
         val phase = transition.state.phase as TimerPhase.RestPhase
         assertEquals(1, phase.completedSets)
         assertEquals(10, phase.remainingSeconds)
+        val performed = transition.state.performedSetRecords.single()
+        assertEquals(0, performed.exerciseIndex)
+        assertEquals(0, performed.setIndex)
+        assertEquals(2, performed.durationSeconds)
+        assertEquals(true, performed.completed)
         assertTrue(transition.effects.contains(TimerEffect.Vibrate(VibratePattern.EXERCISE_DONE)))
         assertTrue(transition.effects.contains(TimerEffect.Speak("休憩")))
     }
@@ -188,6 +193,68 @@ class TimerEngineTest {
         assertNull(TimerEngine.skipRep(startState(exercise(mode = ExerciseMode.TIMED))))
     }
 
+    // ---- finishCurrentSet ----
+
+    @Test
+    fun `finishCurrentSet records early timed set as incomplete`() {
+        val ex = exercise(mode = ExerciseMode.TIMED, durationSeconds = 30, sets = 1, restSeconds = 0)
+        val state = startState(ex).copy(
+            phase = TimerPhase.ExercisePhase(exerciseIndex = 0, currentSet = 1, remainingSeconds = 12)
+        )
+        val transition = TimerEngine.finishCurrentSet(state)!!
+        val performed = transition.state.performedSetRecords.single()
+        assertEquals(18, performed.durationSeconds)
+        assertNull(performed.reps)
+        assertEquals(false, performed.completed)
+        assertEquals(TimerPhase.Complete, transition.state.phase)
+    }
+
+    @Test
+    fun `finishCurrentSet records early fixed reps as incomplete`() {
+        val ex = exercise(
+            mode = ExerciseMode.REPS,
+            durationSeconds = 4,
+            sets = 2,
+            restSeconds = 10,
+            repsPerSet = 5,
+            repRestSeconds = 0
+        )
+        val state = startState(ex).copy(
+            phase = TimerPhase.ExercisePhase(exerciseIndex = 0, currentSet = 1, currentRep = 4, remainingSeconds = 4)
+        )
+        val transition = TimerEngine.finishCurrentSet(state)!!
+        val performed = transition.state.performedSetRecords.single()
+        assertEquals(3, performed.reps)
+        assertEquals(12, performed.durationSeconds)
+        assertEquals(false, performed.completed)
+        assertTrue(transition.state.phase is TimerPhase.RestPhase)
+    }
+
+    @Test
+    fun `finishCurrentSet records fixed reps from rep rest`() {
+        val ex = exercise(
+            mode = ExerciseMode.REPS,
+            durationSeconds = 4,
+            sets = 1,
+            restSeconds = 0,
+            repsPerSet = 5,
+            repRestSeconds = 5
+        )
+        val state = startState(ex).copy(
+            phase = TimerPhase.RepRestPhase(exerciseIndex = 0, currentSet = 1, completedReps = 2, remainingSeconds = 3)
+        )
+        val transition = TimerEngine.finishCurrentSet(state)!!
+        val performed = transition.state.performedSetRecords.single()
+        assertEquals(2, performed.reps)
+        assertEquals(false, performed.completed)
+        assertEquals(TimerPhase.Complete, transition.state.phase)
+    }
+
+    @Test
+    fun `finishCurrentSet returns null for unlimited timed exercise`() {
+        assertNull(TimerEngine.finishCurrentSet(startState(exercise(durationSeconds = DURATION_UNLIMITED))))
+    }
+
     // ---- skipRest ----
 
     @Test
@@ -228,6 +295,10 @@ class TimerEngineTest {
         assertEquals(42, record.durationSeconds)
         assertEquals(15, record.reps)
         assertEquals(1, record.setNumber)
+        val performed = transition.state.performedSetRecords.single()
+        assertEquals(42, performed.durationSeconds)
+        assertEquals(15, performed.reps)
+        assertEquals(0, performed.setIndex)
         assertTrue(transition.state.phase is TimerPhase.RestPhase)
     }
 
@@ -259,6 +330,10 @@ class TimerEngineTest {
         val record = transition.state.freeSetRecords.single()
         assertEquals(2, record.reps)
         assertEquals(8, record.durationSeconds)
+        val performed = transition.state.performedSetRecords.single()
+        assertEquals(2, performed.reps)
+        assertEquals(8, performed.durationSeconds)
+        assertEquals(0, performed.setIndex)
         assertTrue(transition.state.phase is TimerPhase.RestPhase)
     }
 
@@ -306,6 +381,8 @@ class TimerEngineTest {
             assertTrue("ワークアウトが完了しない", ticks < 1000)
         }
         assertEquals(state.totalSeconds, ticks)
+        assertEquals(2, state.performedSetRecords.size)
+        assertEquals(listOf(0, 1), state.performedSetRecords.map { it.setIndex })
     }
 
     @Test
@@ -322,5 +399,7 @@ class TimerEngineTest {
             assertTrue("ワークアウトが完了しない", ticks < 1000)
         }
         assertEquals(state.totalSeconds, ticks)
+        assertEquals(2, state.performedSetRecords.size)
+        assertEquals(listOf(2, 2), state.performedSetRecords.map { it.reps })
     }
 }

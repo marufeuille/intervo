@@ -140,6 +140,10 @@ private fun SyncCard(detail: WorkoutDetailUiModel) {
             text = if (detail.healthConnectWritten) "Health Connect 連携済み" else "Health Connect 未連携",
             kind = if (detail.healthConnectWritten) ChipKind.Done else ChipKind.Pending,
         )
+        StatusChip(
+            text = if (detail.pdsSynced) "PDS 同期済み" else "PDS 未同期",
+            kind = if (detail.pdsSynced) ChipKind.Pds else ChipKind.Pending,
+        )
     }
 }
 

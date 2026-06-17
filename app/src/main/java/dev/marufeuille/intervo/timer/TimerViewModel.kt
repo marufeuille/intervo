@@ -63,5 +63,6 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun skipRep() { timerService?.skipRep() }
     fun finishFreeSet(reps: Int? = null) { timerService?.finishFreeSet(reps) }
     fun finishOpenEndedRepSet() { timerService?.finishOpenEndedRepSet() }
+    fun finishCurrentSet() { timerService?.finishCurrentSet() }
     fun stop() { timerService?.stop() }
 }

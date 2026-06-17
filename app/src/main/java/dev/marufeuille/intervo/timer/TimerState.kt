@@ -3,6 +3,7 @@ package dev.marufeuille.intervo.timer
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
+import dev.marufeuille.intervo.data.PerformedSetRecordInput
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
@@ -35,6 +36,7 @@ data class TimerState(
     val isPaused: Boolean = false,
     val elapsedSeconds: Int = 0,
     val freeSetRecords: List<FreeSetRecordInput> = emptyList(),
+    val performedSetRecords: List<PerformedSetRecordInput> = emptyList(),
     val currentHeartRate: Int? = null
 ) {
     val currentExercise: Exercise?

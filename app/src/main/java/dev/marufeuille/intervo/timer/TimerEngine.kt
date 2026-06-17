@@ -3,6 +3,7 @@ package dev.marufeuille.intervo.timer
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.FreeSetRecordInput
+import dev.marufeuille.intervo.data.PerformedSetRecordInput
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
@@ -146,6 +147,48 @@ object TimerEngine {
         )
     }
 
+    fun finishCurrentSet(current: TimerState): TimerTransition? {
+        val exercisePhase = current.phase as? TimerPhase.ExercisePhase
+        val repRestPhase = current.phase as? TimerPhase.RepRestPhase
+        val exerciseIndex = exercisePhase?.exerciseIndex ?: repRestPhase?.exerciseIndex ?: return null
+        val exercise = current.exercises.getOrNull(exerciseIndex) ?: return null
+        if (exercise.isDurationUnlimited()) return null
+        if (exercise.isOpenEndedReps()) return finishOpenEndedRepSet(current)
+
+        val currentSet = exercisePhase?.currentSet ?: repRestPhase?.currentSet ?: return null
+        val performedSet = when (exercise.mode) {
+            ExerciseMode.TIMED -> {
+                val phase = exercisePhase ?: return null
+                current.performedSetRecord(
+                    exerciseIndex = exerciseIndex,
+                    currentSet = currentSet,
+                    durationSeconds = (exercise.durationSeconds - phase.remainingSeconds).coerceAtLeast(0),
+                    reps = null,
+                    completed = false
+                )
+            }
+            ExerciseMode.REPS -> {
+                val completedReps = repRestPhase?.completedReps
+                    ?: ((exercisePhase?.currentRep ?: 1) - 1).coerceAtLeast(0)
+                current.performedSetRecord(
+                    exerciseIndex = exerciseIndex,
+                    currentSet = currentSet,
+                    durationSeconds = exercise.durationSeconds.coerceAtLeast(0) * completedReps,
+                    reps = completedReps,
+                    completed = completedReps >= exercise.effectiveRepsPerSet()
+                )
+            }
+        }
+
+        return finishExerciseSet(
+            current,
+            exerciseIndex,
+            currentSet,
+            listOf(TimerEffect.Vibrate(VibratePattern.EXERCISE_DONE)),
+            performedSet
+        )
+    }
+
     private fun countdownStep(
         current: TimerState,
         next: Int,
@@ -195,12 +238,15 @@ object TimerEngine {
         current: TimerState,
         exerciseIndex: Int,
         currentSet: Int,
-        leadEffects: List<TimerEffect>
+        leadEffects: List<TimerEffect>,
+        performedSet: PerformedSetRecordInput? = null
     ): TimerTransition {
         val exercise = current.exercises[exerciseIndex]
+        val recorded = performedSet?.let { current.appendPerformedSet(it) }
+            ?: current.recordPerformedSet(exerciseIndex, currentSet)
         return if (exercise.restSeconds > 0) {
             TimerTransition(
-                current.copy(
+                recorded.copy(
                     phase = TimerPhase.RestPhase(
                         exerciseIndex = exerciseIndex,
                         completedSets = currentSet,
@@ -210,9 +256,67 @@ object TimerEngine {
                 leadEffects + TimerEffect.Speak("休憩")
             )
         } else {
-            advanceAfterRest(current, exerciseIndex, currentSet, leadEffects)
+            advanceAfterRest(recorded, exerciseIndex, currentSet, leadEffects)
         }
     }
+
+    private fun TimerState.recordPerformedSet(exerciseIndex: Int, currentSet: Int): TimerState {
+        val exercise = exercises.getOrNull(exerciseIndex) ?: return this
+        val freeSetRecord = freeSetRecords.lastOrNull {
+            it.exerciseId == exercise.id && it.setNumber == currentSet
+        }
+        val durationSeconds = when (exercise.mode) {
+            ExerciseMode.TIMED -> if (exercise.isDurationUnlimited()) {
+                freeSetRecord?.durationSeconds
+            } else {
+                exercise.durationSeconds.coerceAtLeast(0)
+            }
+            ExerciseMode.REPS -> if (exercise.isOpenEndedReps()) {
+                freeSetRecord?.durationSeconds ?: 0
+            } else {
+                exercise.durationSeconds.coerceAtLeast(0) * exercise.effectiveRepsPerSet()
+            }
+        }
+        val reps = when (exercise.mode) {
+            ExerciseMode.TIMED -> freeSetRecord?.reps
+            ExerciseMode.REPS -> if (exercise.isOpenEndedReps()) {
+                freeSetRecord?.reps
+            } else {
+                exercise.effectiveRepsPerSet()
+            }
+        }
+        return appendPerformedSet(
+            performedSetRecord(
+                exerciseIndex = exerciseIndex,
+                currentSet = currentSet,
+                durationSeconds = durationSeconds,
+                reps = reps?.takeIf { it >= 0 },
+                completed = true
+            )
+        )
+    }
+
+    private fun TimerState.performedSetRecord(
+        exerciseIndex: Int,
+        currentSet: Int,
+        durationSeconds: Int?,
+        reps: Int?,
+        completed: Boolean
+    ): PerformedSetRecordInput {
+        val exercise = exercises[exerciseIndex]
+        return PerformedSetRecordInput(
+            exerciseIndex = exerciseIndex,
+            exerciseName = exercise.name,
+            setIndex = (currentSet - 1).coerceAtLeast(0),
+            durationSeconds = durationSeconds,
+            reps = reps?.takeIf { it >= 0 },
+            completed = completed,
+            sortOrder = performedSetRecords.size,
+        )
+    }
+
+    private fun TimerState.appendPerformedSet(record: PerformedSetRecordInput): TimerState =
+        copy(performedSetRecords = performedSetRecords + record)
 
     private fun advanceAfterRepRest(
         current: TimerState,

@@ -33,18 +33,31 @@ internal fun ActiveTimerContent(
     onSkipRest: () -> Unit,
     onSkipRep: () -> Unit,
     onFinishOpenEndedRepSet: () -> Unit,
+    onFinishCurrentSet: () -> Unit,
     onLongPress: () -> Unit
 ) {
     val phase = state.phase
     val isRestLike = phase is TimerPhase.RestPhase || phase is TimerPhase.RepRestPhase
+    val currentExercise = when (phase) {
+        is TimerPhase.ExercisePhase -> state.exercises.getOrNull(phase.exerciseIndex)
+        is TimerPhase.RepRestPhase -> state.exercises.getOrNull(phase.exerciseIndex)
+        is TimerPhase.RestPhase -> state.exercises.getOrNull(phase.exerciseIndex)
+        else -> null
+    }
     val isOpenEndedRepSet = when (phase) {
-        is TimerPhase.ExercisePhase -> state.exercises.getOrNull(phase.exerciseIndex)?.isOpenEndedReps() == true
-        is TimerPhase.RepRestPhase -> state.exercises.getOrNull(phase.exerciseIndex)?.isOpenEndedReps() == true
+        is TimerPhase.ExercisePhase -> currentExercise?.isOpenEndedReps() == true
+        is TimerPhase.RepRestPhase -> currentExercise?.isOpenEndedReps() == true
         else -> false
     }
     val canSkipRep = phase is TimerPhase.ExercisePhase &&
-        state.exercises.getOrNull(phase.exerciseIndex)?.mode == ExerciseMode.REPS &&
+        currentExercise?.mode == ExerciseMode.REPS &&
         !isOpenEndedRepSet
+    val canFinishFixedRepSet = (phase is TimerPhase.ExercisePhase || phase is TimerPhase.RepRestPhase) &&
+        currentExercise?.mode == ExerciseMode.REPS &&
+        !isOpenEndedRepSet
+    val canFinishTimedSet = phase is TimerPhase.ExercisePhase &&
+        currentExercise?.mode == ExerciseMode.TIMED &&
+        currentExercise?.isDurationUnlimited() == false
     val info = timerDisplayInfo(state)
     val remaining = info.remaining
     val exerciseName = info.exerciseName
@@ -101,10 +114,20 @@ internal fun ActiveTimerContent(
             }
             if (isOpenEndedRepSet) {
                 FinishSetButton(onClick = onFinishOpenEndedRepSet)
+            } else if (canSkipRep && canFinishFixedRepSet) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SkipButton(onClick = onSkipRep)
+                    FinishSetButton(onClick = onFinishCurrentSet)
+                }
+            } else if (phase is TimerPhase.RepRestPhase && canFinishFixedRepSet) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SkipButton(onClick = onSkipRest)
+                    FinishSetButton(onClick = onFinishCurrentSet)
+                }
             } else if (isRestLike) {
                 SkipButton(onClick = onSkipRest)
-            } else if (canSkipRep) {
-                SkipButton(onClick = onSkipRep)
+            } else if (canFinishTimedSet) {
+                FinishSetButton(onClick = onFinishCurrentSet)
             } else if (nextExercise != null) {
                 Text("次: ${nextExercise.name}", fontSize = 10.sp, color = TextSecondary.copy(alpha = 0.6f))
             }

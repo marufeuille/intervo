@@ -61,11 +61,13 @@ fun TimerScreen(
             state = state,
             onTap = {
                 val phase = state.phase
-                val isFreeSet = phase is TimerPhase.ExercisePhase &&
-                    state.exercises.getOrNull(phase.exerciseIndex)?.isDurationUnlimited() == true
-                if (isFreeSet && phase is TimerPhase.ExercisePhase) {
+                val exercisePhase = phase as? TimerPhase.ExercisePhase
+                if (
+                    exercisePhase != null &&
+                    state.exercises.getOrNull(exercisePhase.exerciseIndex)?.isDurationUnlimited() == true
+                ) {
                     vm.pause()
-                    freeSetReview = FreeSetReview(durationSeconds = phase.remainingSeconds)
+                    freeSetReview = FreeSetReview(durationSeconds = exercisePhase.remainingSeconds)
                 } else if (state.isPaused) {
                     vm.resume()
                 } else {
@@ -75,6 +77,7 @@ fun TimerScreen(
             onSkipRest = { vm.skipRest() },
             onSkipRep = { vm.skipRep() },
             onFinishOpenEndedRepSet = { vm.finishOpenEndedRepSet() },
+            onFinishCurrentSet = { vm.finishCurrentSet() },
             onLongPress = { showStopDialog = true }
         )
     }

@@ -18,6 +18,8 @@ data class CompanionWorkoutHistory(
     val maxHr: Int? = null,
     val exerciseHrJson: String = "[]",
     val hrSamplesJson: String = "[]",
+    val performedSetsJson: String = "[]",
     val receivedAt: Long = System.currentTimeMillis(),
     val healthConnectWrittenAt: Long? = null,
+    val pdsSyncedAt: Long? = null,
 )
