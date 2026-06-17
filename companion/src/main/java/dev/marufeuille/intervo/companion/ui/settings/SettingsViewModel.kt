@@ -1,25 +1,14 @@
-package dev.marufeuille.intervo.companion.ui
+package dev.marufeuille.intervo.companion.ui.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
 import dev.marufeuille.intervo.companion.sync.CompanionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class CompanionViewModel(app: Application) : AndroidViewModel(app) {
-    private val repository = CompanionRepository(app)
-
-    val histories: StateFlow<List<CompanionWorkoutHistory>> = repository.histories
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val pendingHealthConnect: StateFlow<Int> = repository.pendingHealthConnectCount
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+class SettingsViewModel(private val repository: CompanionRepository) : ViewModel() {
 
     val healthConnectAvailable: Boolean = repository.healthConnectAvailable
 
@@ -27,7 +16,7 @@ class CompanionViewModel(app: Application) : AndroidViewModel(app) {
     val healthConnectPermitted: StateFlow<Boolean> = _healthConnectPermitted.asStateFlow()
 
     private val _healthConnectStatus = MutableStateFlow(
-        if (repository.healthConnectAvailable) "Health Connect 連携可能" else "Health Connect が利用できません"
+        if (repository.healthConnectAvailable) "Health Connect 連携可能" else "Health Connect が利用できません",
     )
     val healthConnectStatus: StateFlow<String> = _healthConnectStatus.asStateFlow()
 
@@ -37,7 +26,8 @@ class CompanionViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshHealthConnect() {
         viewModelScope.launch {
-            _healthConnectPermitted.value = runCatching { repository.healthConnectPermitted() }.getOrDefault(false)
+            _healthConnectPermitted.value =
+                runCatching { repository.healthConnectPermitted() }.getOrDefault(false)
         }
     }
 

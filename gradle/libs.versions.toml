@@ -5,6 +5,8 @@ ksp = "2.2.21-2.0.5"
 coroutines = "1.11.0"
 lifecycleRuntime = "2.10.0"
 composeBom = "2026.05.01"
+# material-icons-core は compose BOM 管理外。オフラインで確実に解決できるキャッシュ済み版に固定。
+composeIcons = "1.7.8"
 # Wear OS 6 (API36) で wearCompose 1.5+ の predictive back 統合により
 # SwipeDismissableNavHost のスワイプバックが機能しなくなる退行があるため、
 # predictive back 導入前の 1.4 系（1.4.1=1.4系最終）に意図的に固定する。安易に上げない。
@@ -40,6 +42,7 @@ compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "composeIcons" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }

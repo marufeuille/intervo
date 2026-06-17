@@ -16,6 +16,9 @@ class CompanionRepository(context: Context) {
 
     val histories: Flow<List<CompanionWorkoutHistory>> = dao.getAll()
 
+    /** 1 件の履歴を購読する（履歴詳細画面用）。存在しなければ null を流す。 */
+    fun history(id: String): Flow<CompanionWorkoutHistory?> = dao.getById(id)
+
     /** Health Connect へ未書き込みの履歴件数。 */
     val pendingHealthConnectCount: Flow<Int> = dao.pendingHealthConnectCount()
 

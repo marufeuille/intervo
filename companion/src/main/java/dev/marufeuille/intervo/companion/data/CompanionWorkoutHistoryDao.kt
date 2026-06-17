@@ -11,6 +11,9 @@ interface CompanionWorkoutHistoryDao {
     @Query("SELECT * FROM companion_workout_history ORDER BY completedAt DESC")
     fun getAll(): Flow<List<CompanionWorkoutHistory>>
 
+    @Query("SELECT * FROM companion_workout_history WHERE id = :id")
+    fun getById(id: String): Flow<CompanionWorkoutHistory?>
+
     @Query("SELECT COUNT(*) FROM companion_workout_history WHERE healthConnectWrittenAt IS NULL")
     fun pendingHealthConnectCount(): Flow<Int>
 
