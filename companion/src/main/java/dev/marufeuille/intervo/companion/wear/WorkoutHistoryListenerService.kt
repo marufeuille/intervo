@@ -7,14 +7,9 @@ import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import dev.marufeuille.intervo.companion.CompanionApplication
 import dev.marufeuille.intervo.companion.data.CompanionWorkoutHistory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class WorkoutHistoryListenerService : WearableListenerService() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         val received = dataEvents
@@ -47,21 +42,18 @@ class WorkoutHistoryListenerService : WearableListenerService() {
 
         if (received.isEmpty()) return
 
-        scope.launch {
-            val repository = (application as CompanionApplication).container.repository
+        val repository = (application as CompanionApplication).container.repository
+        // onDataChanged はバックグラウンドスレッドで呼ばれる。サービスが生きている間に
+        // Room 保存だけは確実に完走させる（ローカル保存は速い）。
+        runBlocking {
             received.forEach { (uri, history) ->
                 repository.receive(history)
                 // Room に取り込めたら Data Layer 側のアイテムは消す（バッファ肥大化防止）。ベストエフォート。
                 runCatching { Wearable.getDataClient(applicationContext).deleteDataItems(uri) }
             }
-            repository.writePendingHealthConnect()
-            repository.writePendingPds()
         }
-    }
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
+        // ネットワーク同期（Health Connect / PDS）はサービス破棄に巻き込まれないよう WorkManager へ委譲する。
+        repository.scheduleSync()
     }
 
     companion object {

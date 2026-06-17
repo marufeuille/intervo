@@ -34,6 +34,25 @@ class CompanionRepository(context: Context) {
         dao.insertIgnore(history)
     }
 
+    /**
+     * 未同期ぶんを Health Connect / PDS へ流す [SyncWorker] を予約する。
+     * ウォッチからの受信時・PDS 設定保存時に呼ぶことで、手動の再同期ボタンに頼らず自動で同期させる。
+     */
+    fun scheduleSync() {
+        SyncWorker.enqueue(appContext)
+    }
+
+    /**
+     * [SyncWorker] から呼ぶ同期本体。Health Connect と PDS の未処理ぶんを流す。
+     * PDS が設定済みなのに送り切れず残ったぶんがあれば true（= Worker に再試行させたい）を返す。
+     * Health Connect の権限未許可で残るぶんは再試行対象にしない（無限リトライ防止）。
+     */
+    suspend fun syncPending(): Boolean = withContext(Dispatchers.IO) {
+        writePendingHealthConnect()
+        writePendingPds()
+        pdsConfigured && dao.getPendingPds().isNotEmpty()
+    }
+
     val healthConnectAvailable: Boolean
         get() = healthConnectWriter.isAvailable
 
