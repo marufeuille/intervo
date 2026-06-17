@@ -69,6 +69,8 @@ class SettingsViewModel(private val repository: CompanionRepository) : ViewModel
             appPassword = appPassword.takeIf { it.isNotBlank() },
         )
         refreshPdsSettings("PDS 設定を保存しました")
+        // 設定済みになったら、過去に溜まった未同期ぶんを自動で送る（手動の再同期ボタンに頼らない）。
+        if (repository.pdsConfigured) repository.scheduleSync()
     }
 
     fun clearPdsSettings() {
