@@ -2,6 +2,8 @@ package dev.marufeuille.intervo.companion.ui.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.marufeuille.intervo.companion.social.SessionPostDraft
+import dev.marufeuille.intervo.companion.social.SessionPostDraftComposer
 import dev.marufeuille.intervo.companion.sync.CompanionRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,14 +18,22 @@ class HistoryDetailViewModel(
     sealed interface UiState {
         data object Loading : UiState
         data object Missing : UiState
-        data class Loaded(val detail: WorkoutDetailUiModel) : UiState
+        data class Loaded(
+            val detail: WorkoutDetailUiModel,
+            val postDraft: SessionPostDraft,
+        ) : UiState
     }
+
+    private val postDraftComposer = SessionPostDraftComposer()
 
     val uiState: StateFlow<UiState> =
         repository.history(historyId)
             .map { history ->
                 if (history == null) UiState.Missing
-                else UiState.Loaded(WorkoutDetailMapper.map(history))
+                else UiState.Loaded(
+                    detail = WorkoutDetailMapper.map(history),
+                    postDraft = postDraftComposer.compose(history),
+                )
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState.Loading)
 }

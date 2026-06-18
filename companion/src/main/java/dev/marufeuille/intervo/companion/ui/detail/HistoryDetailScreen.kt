@@ -1,5 +1,6 @@
 package dev.marufeuille.intervo.companion.ui.detail
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -22,17 +25,23 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marufeuille.intervo.companion.di.companionViewModel
+import dev.marufeuille.intervo.companion.social.SessionPostDraft
 import dev.marufeuille.intervo.companion.ui.components.ChipKind
 import dev.marufeuille.intervo.companion.ui.components.CompanionCard
 import dev.marufeuille.intervo.companion.ui.components.SectionHeader
@@ -76,6 +85,7 @@ fun HistoryDetailScreen(
 
             is HistoryDetailViewModel.UiState.Loaded -> DetailContent(
                 detail = s.detail,
+                postDraft = s.postDraft,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -88,7 +98,11 @@ private fun CenteredBox(modifier: Modifier = Modifier, content: @Composable () -
 }
 
 @Composable
-private fun DetailContent(detail: WorkoutDetailUiModel, modifier: Modifier = Modifier) {
+private fun DetailContent(
+    detail: WorkoutDetailUiModel,
+    postDraft: SessionPostDraft,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -97,6 +111,7 @@ private fun DetailContent(detail: WorkoutDetailUiModel, modifier: Modifier = Mod
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SummaryCard(detail)
+        PostDraftCard(postDraft)
         SyncCard(detail)
         SectionHeader("種目")
         detail.exercises.forEach { ExerciseCard(it) }
@@ -144,6 +159,76 @@ private fun SyncCard(detail: WorkoutDetailUiModel) {
             text = if (detail.pdsSynced) "PDS 同期済み" else "PDS 未同期",
             kind = if (detail.pdsSynced) ChipKind.Pds else ChipKind.Pending,
         )
+    }
+}
+
+@Composable
+private fun PostDraftCard(postDraft: SessionPostDraft) {
+    val context = LocalContext.current
+    val selectedPostIndex = remember(postDraft.sourceRef, postDraft.posts) { mutableIntStateOf(0) }
+    val postCount = postDraft.posts.size
+    val currentPost = postDraft.posts.getOrElse(selectedPostIndex.intValue) { "" }
+
+    CompanionCard(modifier = Modifier.fillMaxWidth(), verticalGap = 12) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Bluesky 投稿",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (postCount > 1) {
+                Text(
+                    text = "${selectedPostIndex.intValue + 1}/$postCount",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ) {
+            Text(
+                text = currentPost,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (postCount > 1) {
+                TextButton(
+                    onClick = { selectedPostIndex.intValue -= 1 },
+                    enabled = selectedPostIndex.intValue > 0,
+                ) {
+                    Text("前へ")
+                }
+                TextButton(
+                    onClick = { selectedPostIndex.intValue += 1 },
+                    enabled = selectedPostIndex.intValue < postCount - 1,
+                ) {
+                    Text("次へ")
+                }
+            }
+            Button(
+                onClick = { context.sharePostText(currentPost) },
+                enabled = currentPost.isNotBlank(),
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            ) {
+                Icon(Icons.Rounded.Share, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("共有")
+            }
+        }
     }
 }
 
@@ -218,4 +303,11 @@ private fun plannedLabel(e: ExerciseDetail): String {
 private fun heartRateLabel(e: ExerciseDetail): String {
     if (e.startHr == null && e.endHr == null) return "心拍  —"
     return "心拍  ${e.startHr.bpmOrDash()} → ${e.endHr.bpmOrDash()} bpm"
+}
+
+private fun android.content.Context.sharePostText(text: String) {
+    val intent = Intent(Intent.ACTION_SEND)
+        .setType("text/plain")
+        .putExtra(Intent.EXTRA_TEXT, text)
+    startActivity(Intent.createChooser(intent, "共有"))
 }
