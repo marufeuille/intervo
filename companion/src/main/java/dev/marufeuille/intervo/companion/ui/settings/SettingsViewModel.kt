@@ -84,10 +84,10 @@ class SettingsViewModel(private val repository: CompanionRepository) : ViewModel
                 refreshPdsSettings("PDS 設定が未完了です")
                 return@launch
             }
-            _pdsStatus.value = "PDS に同期中..."
-            val written = runCatching { repository.writePendingPds() }.getOrDefault(0)
+            _pdsStatus.value = "PDS に再同期中..."
+            val written = runCatching { repository.rewriteAllPds() }.getOrDefault(0)
             _pdsStatus.value = if (written > 0) {
-                "${written}件を PDS に同期しました"
+                "${written}件を PDS に再同期しました"
             } else {
                 "PDS 同期済み（新規なし）"
             }

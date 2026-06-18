@@ -86,14 +86,26 @@ class CompanionRepository(context: Context) {
 
     /** 未同期の履歴を PDS に直接送る。認証情報未設定・失敗時は mark せず次回へ残す。 */
     suspend fun writePendingPds(): Int = withContext(Dispatchers.IO) {
-        val credentials = pdsCredentialsStore.loadCredentials() ?: return@withContext 0
+        writePds(dao.getPendingPds())
+    }
+
+    /**
+     * PDS 上の既存 record を現在の mapper 出力で上書きするため、全履歴を再送する。
+     * rkey は履歴 ID 固定なので、PDS 側では同一 record への冪等 upsert になる。
+     */
+    suspend fun rewriteAllPds(): Int = withContext(Dispatchers.IO) {
+        writePds(dao.getAllForPdsRewrite())
+    }
+
+    private suspend fun writePds(histories: List<CompanionWorkoutHistory>): Int {
+        val credentials = pdsCredentialsStore.loadCredentials() ?: return 0
         var written = 0
-        dao.getPendingPds().forEach { history ->
+        histories.forEach { history ->
             if (pdsClient.write(history, credentials)) {
                 dao.markPdsSynced(history.id, System.currentTimeMillis())
                 written += 1
             }
         }
-        written
+        return written
     }
 }

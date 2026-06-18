@@ -89,12 +89,7 @@ class WorkoutSessionRecordMapperTest {
         assertEquals("2026-06-17T12:20:34Z", record["completedAt"]?.jsonPrimitive?.content)
         assertEquals(1234, record["durationSeconds"]?.jsonPrimitive?.int)
         assertEquals("2026-06-17T12:20:40Z", record["createdAt"]?.jsonPrimitive?.content)
-
-        val heartRate = record["heartRate"]?.jsonObject
-        assertNotNull(heartRate)
-        assertEquals(80, heartRate!!["start"]?.jsonPrimitive?.int)
-        assertEquals(130, heartRate["avg"]?.jsonPrimitive?.int)
-        assertEquals(165, heartRate["max"]?.jsonPrimitive?.int)
+        assertFalse(record.containsKey("heartRate"))
 
         val exercises = record["exercises"]?.jsonArray
         assertNotNull(exercises)
@@ -121,10 +116,7 @@ class WorkoutSessionRecordMapperTest {
         assertEquals(1, repsPerformedSets[1].jsonObject["index"]?.jsonPrimitive?.int)
         assertEquals(9, repsPerformedSets[1].jsonObject["reps"]?.jsonPrimitive?.int)
         assertEquals("false", repsPerformedSets[1].jsonObject["completed"]?.jsonPrimitive?.content)
-        val repsPerformedHr = repsPerformed["heartRate"]?.jsonObject
-        assertNotNull(repsPerformedHr)
-        assertEquals(110, repsPerformedHr!!["start"]?.jsonPrimitive?.int)
-        assertEquals(150, repsPerformedHr["end"]?.jsonPrimitive?.int)
+        assertFalse(repsPerformed.containsKey("heartRate"))
 
         val timedExercise = exercises[1].jsonObject
         assertEquals("time", timedExercise["mode"]?.jsonPrimitive?.content)

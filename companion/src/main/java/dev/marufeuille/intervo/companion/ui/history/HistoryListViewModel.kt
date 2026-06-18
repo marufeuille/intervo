@@ -31,11 +31,11 @@ class HistoryListViewModel(private val repository: CompanionRepository) : ViewMo
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
 
-    /** 未同期ぶんの再送を試みる（権限/設定が無ければ何もしない）。 */
+    /** Health Connect は未同期ぶん、PDS は既存 record の上書きも含めて再同期する。 */
     fun retrySync() {
         viewModelScope.launch {
             runCatching { repository.writePendingHealthConnect() }
-            runCatching { repository.writePendingPds() }
+            runCatching { repository.rewriteAllPds() }
         }
     }
 }
