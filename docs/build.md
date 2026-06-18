@@ -28,11 +28,12 @@ Debug と Release は別アプリとしてウォッチに共存できる。
 ### Companion の PDS 直接同期（任意）
 
 `companion` は標準 PDS の XRPC に直接書き込む。設定画面で以下を保存すると、受信済み履歴を
-`dev.marufeuille.workout.session` record として `com.atproto.repo.putRecord` する。
-PDS へ送る record には実施日時、合計時間、種目、予定セット、実施セットを含める。心拍数データは含めず、
-Health Connect 側にのみ書き込む。
-設定画面や履歴画面の再同期は同じ `sourceRef` / rkey で全履歴を再 `putRecord` し、PDS 上の既存 record を
-現在の payload で上書きする。
+`dev.marufeuille.workout.plan` / `dev.marufeuille.workout.checkin` record として
+`com.atproto.repo.putRecord` する。
+PDS へ送る record は、再利用できるワークアウトプラン定義と、そのプランを実行したという軽い
+チェックイン要約に分ける。心拍数データは含めず、Health Connect 側にのみ書き込む。
+設定画面や履歴画面の再同期は同じ rkey で全履歴を再 `putRecord` し、PDS 上の既存 plan/checkin record を
+現在の payload で上書きする。checkin は直前に書き込んだ plan の `uri` / `cid` を参照する。
 
 - PDS URL: `https://pds.example.com` など
 - ハンドル: `you.example.com` など
@@ -44,7 +45,7 @@ App Password 認証部分を OAuth token provider に置き換える。
 ### Emulator で実 PDS 書き込みを確認する
 
 設定画面で PDS 設定を保存してから、Debug 専用 receiver でダミー履歴を投入できる。
-ダミー履歴には `performed.sets[]` の完了セット、実レップが少ない未完了セット、時間セットの途中終了例を含めている。
+ダミー履歴には完了セット、実レップが少ない未完了セット、時間セットの途中終了例を含めている。
 
 ```bash
 ./gradlew :companion:installDebug

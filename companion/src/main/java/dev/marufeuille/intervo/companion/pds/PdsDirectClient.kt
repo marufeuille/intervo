@@ -20,7 +20,7 @@ import kotlinx.serialization.json.put
  * OAuth 化するときは、createSession 部分を OAuth token provider に置き換えれば putRecord は残せる。
  */
 class PdsDirectClient(
-    private val mapper: WorkoutSessionRecordMapper = WorkoutSessionRecordMapper(),
+    private val mapper: WorkoutPdsRecordMapper = WorkoutPdsRecordMapper(),
 ) {
     private var cachedSession: Session? = null
 
@@ -73,26 +73,58 @@ class PdsDirectClient(
         credentials: PdsCredentials,
         session: Session,
     ): Boolean {
-        val response = xrpc(
+        val planRef = putRecord(
             serviceUrl = credentials.serviceUrl,
+            token = session.accessJwt,
+            repo = session.did,
+            collection = WorkoutPdsRecordMapper.PLAN_COLLECTION,
+            rkey = mapper.planRkey(history),
+            record = mapper.mapPlan(history),
+        ) ?: return false
+        return putRecord(
+            serviceUrl = credentials.serviceUrl,
+            token = session.accessJwt,
+            repo = session.did,
+            collection = WorkoutPdsRecordMapper.CHECKIN_COLLECTION,
+            rkey = mapper.checkinRkey(history),
+            record = mapper.mapCheckin(history, planRef),
+        ) != null
+    }
+
+    private fun putRecord(
+        serviceUrl: String,
+        token: String,
+        repo: String,
+        collection: String,
+        rkey: String,
+        record: JsonObject,
+    ): PdsRecordRef? {
+        val response = xrpc(
+            serviceUrl = serviceUrl,
             method = "POST",
             nsid = "com.atproto.repo.putRecord",
-            token = session.accessJwt,
+            token = token,
             body = buildJsonObject {
-                put("repo", session.did)
-                put("collection", WorkoutSessionRecordMapper.COLLECTION)
-                put("rkey", history.id)
+                put("repo", repo)
+                put("collection", collection)
+                put("rkey", rkey)
                 put("validate", false)
-                put("record", mapper.map(history))
+                put("record", record)
             },
             throwOnHttpError = false,
         )
         val status = response.string(HTTP_STATUS)?.toIntOrNull() ?: HTTP_OK
         if (status !in 200..299) {
-            Log.w(TAG, "PDS putRecord rejected sourceRef=${history.id} status=$status")
-            return false
+            Log.w(TAG, "PDS putRecord rejected collection=$collection rkey=$rkey status=$status")
+            return null
         }
-        return true
+        val uri = response.string("uri")
+        val cid = response.string("cid")
+        if (uri.isNullOrBlank() || cid.isNullOrBlank()) {
+            Log.w(TAG, "PDS putRecord missing ref collection=$collection rkey=$rkey")
+            return null
+        }
+        return PdsRecordRef(uri = uri, cid = cid)
     }
 
     private fun xrpc(
