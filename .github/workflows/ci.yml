@@ -145,3 +145,100 @@ jobs:
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
+
+  # companion（スマホアプリ）の実機 E2E。Wear の instrumented-test と並列で、phone エミュレータ上で
+  # connectedDebugAndroidTest を走らせる。main push 的み（PR では走らない）点も Wear と同一。
+  instrumented-test-companion:
+    name: E2E (phone emulator)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Gradle キャッシュの書き込みは build ジョブに任せ、ここは read-only
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      # Android エミュレータのハードウェアアクセラレーション（KVM）を有効化
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # phone エミュレータの AVD（とブート済みスナップショット）をキャッシュ。Wear のキーと衝突させない。
+      - name: AVD cache
+        uses: actions/cache@v5
+        id: avd-cache-companion
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-android-google-apis-34-x86_64
+
+      # キャッシュミス時のみ、AVD を作成してブート済みスナップショットを生成・保存
+      - name: Create AVD snapshot
+        if: steps.avd-cache-companion.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD snapshot generated."
+
+      # phone（API 34, google_apis, x86_64）エミュレータ上で companion の connectedDebugAndroidTest を実行
+      - name: Run E2E on phone emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: ./gradlew :companion:connectedDebugAndroidTest
+
+      # PASS/FAIL 表をジョブサマリに出力（companion の結果を集計）
+      - name: Write E2E summary
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob, html, re
+          files = glob.glob("companion/build/outputs/androidTest-results/connected/**/*.xml", recursive=True)
+          print("## Companion E2E シナリオ結果\n")
+          if not files:
+              print("レポートが見つかりませんでした（エミュレータ起動やビルドで失敗した可能性）。")
+              raise SystemExit
+          print("| 結果 | シナリオ |")
+          print("| --- | --- |")
+          total = fail = 0
+          for fp in files:
+              t = open(fp).read()
+              for m in re.finditer(r'<testcase name="([^"]+)".*?(?:/>|>(.*?)</testcase>)', t, re.S):
+                  name, body = m.group(1), m.group(2) or ""
+                  failed = re.search(r'<(failure|error)\b', body) is not None
+                  total += 1; fail += 1 if failed else 0
+                  print(f"| {'❌ FAIL' if failed else '✅ PASS'} | {html.unescape(name)} |")
+          print(f"\n**{total - fail}/{total} passed**")
+          PY
+
+      - name: Upload E2E report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-companion-report
+          path: |
+            companion/build/reports/androidTests/
+            companion/build/outputs/androidTest-results/

@@ -35,6 +35,7 @@ android {
         targetSdk = 36
         versionCode = versionCodeFrom(resolvedVersionName, 1)
         versionName = resolvedVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -102,4 +103,12 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
+
+    // instrumented (androidTest) E2E — Compose UI テスト（app モジュールと同構成）
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    // createAndroidComposeRule<ComponentActivity> が使う空アクティビティの manifest を提供
+    debugImplementation(libs.compose.ui.test.manifest)
 }
