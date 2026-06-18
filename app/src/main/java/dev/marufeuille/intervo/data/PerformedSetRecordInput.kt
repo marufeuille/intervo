@@ -1,7 +1,7 @@
 package dev.marufeuille.intervo.data
 
 /**
- * PDS の performed.sets[] に載せるセット単位実績。
+ * Companion 側の履歴表示、Health Connect 書き込み、PDS checkin 要約の元になるセット単位実績。
  * Room には保存せず、完了時に Wear -> Companion の DataLayer payload へ同梱する。
  */
 data class PerformedSetRecordInput(

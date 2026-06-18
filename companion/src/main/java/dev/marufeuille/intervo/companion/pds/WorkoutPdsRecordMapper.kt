@@ -15,49 +15,75 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
-/**
- * `my-pds/lexicons/dev.marufeuille.workout.session.json` に合わせて
- * Companion の履歴を ATProto record JSON へ変換する。
- */
-class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
+data class PdsRecordRef(
+    val uri: String,
+    val cid: String,
+)
 
-    fun map(history: CompanionWorkoutHistory): JsonObject {
+/**
+ * Companion の完了履歴から、PDS に置く共有向け record を作る。
+ *
+ * - WorkoutPlan: 再利用・公開されるメニュー定義。
+ * - WorkoutCheckin: そのメニューを実行したという軽い記録。
+ */
+class WorkoutPdsRecordMapper(private val clock: Clock = Clock.systemUTC()) {
+
+    fun planRkey(history: CompanionWorkoutHistory): String =
+        history.workoutId.ifBlank { "workout-${history.id}" }
+
+    fun checkinRkey(history: CompanionWorkoutHistory): String = history.id
+
+    fun mapPlan(history: CompanionWorkoutHistory): JsonObject {
         val workoutSnapshot = history.workoutSnapshotJson.parseObjectOrNull()
-        val exercises = parseExercises(
-            snapshotsJson = history.exerciseSnapshotsJson,
-            performedSetsJson = history.performedSetsJson,
-        )
-        val completedAt = Instant.ofEpochMilli(history.completedAt)
-        val startedAt = completedAt.minusSeconds(history.totalSeconds.toLong().coerceAtLeast(0L))
+        val exercises = parsePlanExercises(history.exerciseSnapshotsJson)
         val title = history.workoutName
             .ifBlank { workoutSnapshot?.string("workout_name").orEmpty() }
             .takeIf { it.isNotBlank() }
 
         return buildJsonObject {
-            put("\$type", COLLECTION)
+            put("\$type", PLAN_COLLECTION)
             put("source", SOURCE)
-            put("sourceRef", history.id)
-            put("exerciseType", workoutSnapshot?.string("exercise_type").toExerciseType())
+            put("sourceRef", history.workoutId)
             title?.let { put("title", it) }
-            put("startedAt", startedAt.toString())
-            put("completedAt", completedAt.toString())
-            put("durationSeconds", history.totalSeconds.coerceAtLeast(0))
+            put("exerciseType", workoutSnapshot?.string("exercise_type").toExerciseType())
             if (exercises.isNotEmpty()) put("exercises", JsonArray(exercises))
+            estimatedDurationSeconds(exercises)?.let { put("estimatedDurationSeconds", it) }
             put("createdAt", Instant.now(clock).toString())
         }
     }
 
-    private fun parseExercises(
-        snapshotsJson: String,
-        performedSetsJson: String,
-    ): List<JsonObject> {
-        val performedSetsByIndex = parsePerformedSets(performedSetsJson)
+    fun mapCheckin(history: CompanionWorkoutHistory, planRef: PdsRecordRef): JsonObject {
+        val completedAt = Instant.ofEpochMilli(history.completedAt)
+        val startedAt = completedAt.minusSeconds(history.totalSeconds.toLong().coerceAtLeast(0L))
+        val workoutSnapshot = history.workoutSnapshotJson.parseObjectOrNull()
+        val title = history.workoutName
+            .ifBlank { workoutSnapshot?.string("workout_name").orEmpty() }
+            .takeIf { it.isNotBlank() }
+        val summary = performedSummary(history.performedSetsJson)
+
+        return buildJsonObject {
+            put("\$type", CHECKIN_COLLECTION)
+            put("source", SOURCE)
+            put("sourceRef", history.id)
+            put("plan", planRef.toJson())
+            put("planSourceRef", history.workoutId)
+            title?.let { put("title", it) }
+            put("status", "completed")
+            put("startedAt", startedAt.toString())
+            put("completedAt", completedAt.toString())
+            put("durationSeconds", history.totalSeconds.coerceAtLeast(0))
+            put("exerciseCount", history.exerciseCount.coerceAtLeast(0))
+            summary?.let { put("performed", it) }
+            put("createdAt", Instant.now(clock).toString())
+        }
+    }
+
+    private fun parsePlanExercises(snapshotsJson: String): List<JsonObject> {
         val array = snapshotsJson.parseArrayOrNull() ?: return emptyList()
         return array.mapIndexedNotNull { index, element ->
             val snapshot = element as? JsonObject ?: return@mapIndexedNotNull null
             val mode = snapshot.string("mode").toMode()
             val planned = snapshot.toPlanned(mode)
-            val performed = performedFor(sets = performedSetsByIndex[index].orEmpty())
             val name = snapshot.string("exercise_name")
                 ?.takeIf { it.isNotBlank() }
                 ?: "種目${index + 1}"
@@ -68,7 +94,6 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
                 mode?.let { put("mode", it) }
                 snapshot.int("sort_order")?.takeIf { it >= 0 }?.let { put("order", it) }
                 if (planned.isNotEmpty()) put("planned", planned)
-                performed?.let { put("performed", it) }
             }
         }
     }
@@ -85,25 +110,37 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
         int("rep_rest_seconds")?.takeIf { it > 0 }?.let { put("repRestSeconds", it) }
     }
 
-    private fun performedFor(sets: List<JsonObject>): JsonObject? {
-        if (sets.isEmpty()) return null
+    private fun estimatedDurationSeconds(exercises: List<JsonObject>): Int? {
+        var total = 0
+        exercises.forEach { exercise ->
+            val planned = exercise["planned"] as? JsonObject ?: return null
+            val sets = planned.int("sets") ?: return null
+            val duration = planned.int("durationSeconds") ?: return null
+            val rest = planned.int("restSeconds") ?: 0
+            total += (duration * sets) + (rest * (sets - 1).coerceAtLeast(0))
+        }
+        return total.takeIf { it > 0 }
+    }
+
+    private fun performedSummary(performedSetsJson: String): JsonObject? {
+        val array = performedSetsJson.parseArrayOrNull() ?: return null
+        if (array.isEmpty()) return null
+        var completed = 0
+        var total = 0
+        array.forEach { element ->
+            val obj = element as? JsonObject ?: return@forEach
+            total += 1
+            if (obj.boolean("completed") != false) completed += 1
+        }
         return buildJsonObject {
-            if (sets.isNotEmpty()) put("sets", JsonArray(sets))
+            put("setCount", total)
+            put("completedSetCount", completed)
         }
     }
 
-    private fun parsePerformedSets(performedSetsJson: String): Map<Int, List<JsonObject>> {
-        val array = performedSetsJson.parseArrayOrNull() ?: return emptyMap()
-        return array.mapIndexedNotNull { fallbackIndex, element ->
-            val obj = element as? JsonObject ?: return@mapIndexedNotNull null
-            val exerciseIndex = obj.int("exercise_index") ?: return@mapIndexedNotNull null
-            exerciseIndex to buildJsonObject {
-                put("index", obj.int("set_index") ?: fallbackIndex)
-                obj.int("reps")?.takeIf { it >= 0 }?.let { put("reps", it) }
-                obj.int("duration_seconds")?.takeIf { it >= 0 }?.let { put("durationSeconds", it) }
-                put("completed", obj.boolean("completed") ?: true)
-            }
-        }.groupBy({ it.first }, { it.second })
+    private fun PdsRecordRef.toJson(): JsonObject = buildJsonObject {
+        put("uri", uri)
+        put("cid", cid)
     }
 
     private fun String?.toMode(): String? = when (this) {
@@ -145,7 +182,8 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
     private fun Int.dropSentinel(): Int? = takeIf { it >= 0 }
 
     companion object {
-        const val COLLECTION = "dev.marufeuille.workout.session"
+        const val PLAN_COLLECTION = "dev.marufeuille.workout.plan"
+        const val CHECKIN_COLLECTION = "dev.marufeuille.workout.checkin"
         private const val SOURCE = "intervo"
     }
 }
