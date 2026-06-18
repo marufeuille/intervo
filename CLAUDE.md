@@ -13,7 +13,7 @@ Intervo は Wear OS 向けインターバル・トレーニングタイマー。
 
 1. **リリースノートを用意**: `docs/release-notes-TEMPLATE.md` をコピーして `docs/release-notes-<VERSION>.md` を作成・記入。
    「Play Console『最新情報』用」見出し直下のコードフェンス（500字以内・空不可）が Play の「最新情報」になる。
-   - 形式は PR 時に `validate-release-notes` ワークフローが検証。ローカル確認: `python3 scripts/check_release_notes.py docs/release-notes-<VERSION>.md`
+   - ファイル名と形式は PR 時に `validate-release-notes` ワークフローが検証。ローカル確認: `python3 scripts/check_release_notes.py docs/release-notes-<VERSION>.md`
    - ノートが無い／空のままタグを打つと Release ワークフローは**意図的に失敗**する。
 2. リリース対象が main に揃っていること。
 
@@ -30,7 +30,7 @@ CI は **2 層 + リリース前ゲート**で責務を分ける。「ロジッ�
 - **軽量層（`ci.yml` の `build`、PR・main push 共通）** — `:app` のコンパイル + Lint + ユニットテストのみ（実機を起動しないので速い）。**PR の高速フィードバックはこの層だけ**。`docs/**` と `*.md` のみの変更ではスキップ（`paths-ignore`）。
 - **E2E 層（`ci.yml` の `instrumented-test`、main push のみ）** — Wear OS エミュレータで `connectedDebugAndroidTest`。マージ直後に体験破壊を早期検知するのが目的。**PR では走らない**。
 - **リリース前ゲート（`release.yml` の `e2e`、tag push / `workflow_dispatch`）** — 配信ジョブ `release` が `needs: e2e`。E2E が落ちたら**配信されない**。R8 リリースビルドもこの段で初めて通る。
-- `validate-release-notes.yml` — リリースノート変更時に形式を検証（変更ファイルのみ対象）。
+- `validate-release-notes.yml` — リリースノート変更時にファイル名と形式を検証（変更ファイルのみ対象）。
 
 開発フローと運用ルール:
 

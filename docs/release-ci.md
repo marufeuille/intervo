@@ -99,7 +99,7 @@ keyPassword=$KEY_PASSWORD
 2. **リリースノートを用意する**: `docs/release-notes-TEMPLATE.md` をコピーして `docs/release-notes-<VERSION>.md` を作成（例 `docs/release-notes-1.7.2.md`）。
    「Play Console『最新情報』用」見出しの直下に、コードフェンス ` ``` ` で囲んだ本文（500字以内）を書く。
    CI はこの**見出し以降の最初のコードフェンスの中身**を抽出して Play の「最新情報（What's new）」として `ja-JP` に登録する。
-   - 形式は `validate-release-notes` ワークフローが PR 時に検証する（見出し・フェンスの有無・空でないこと・500字以内）。
+   - ファイル名と形式は `validate-release-notes` ワークフローが PR 時に検証する（`docs/release-notes-X.Y.Z.md`、見出し・フェンスの有無・空でないこと・500字以内）。
      ローカル確認: `python3 scripts/check_release_notes.py docs/release-notes-<VERSION>.md`
    - このファイルが無い／フェンスが空のままタグを打つと、Release ワークフローは**意図的に失敗**する（リリースノート無しでの配信を防ぐため）。
 3. タグを打って push:

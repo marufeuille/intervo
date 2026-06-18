@@ -1,14 +1,14 @@
 name: Validate release notes
 
-# リリースノート（docs/release-notes-<VERSION>.md）が CI の抽出フォーマットに適合しているかを
-# 変更時に検証する。これにより「最新情報」が常に Play へ正しく反映される形式を担保する。
+# リリースノート（docs/release-notes-<VERSION>.md）が release.yml の参照パス・抽出フォーマットに
+# 適合しているかを変更時に検証する。これにより「最新情報」が常に Play へ正しく反映される形式を担保する。
 # 旧フォーマットの過去ファイルで落ちないよう、検証対象は「この変更で追加/変更されたファイル」のみ。
 on:
   pull_request:
-    paths: ["docs/release-notes-*.md"]
+    paths: ["docs/release-note*.md"]
   push:
     branches: [main]
-    paths: ["docs/release-notes-*.md"]
+    paths: ["docs/release-note*.md"]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -38,7 +38,7 @@ jobs:
             range="HEAD~1...HEAD"
           fi
           echo "diff range: $range"
-          files=$(git diff --name-only --diff-filter=AM $range -- 'docs/release-notes-*.md' || true)
+          files=$(git diff --name-only --diff-filter=AM $range -- 'docs/release-note*.md' ':!docs/release-notes-TEMPLATE.md' || true)
           if [ -z "$files" ]; then
             echo "変更されたリリースノートはありません（スキップ）"
             exit 0
