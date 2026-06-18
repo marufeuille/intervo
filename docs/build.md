@@ -29,6 +29,10 @@ Debug と Release は別アプリとしてウォッチに共存できる。
 
 `companion` は標準 PDS の XRPC に直接書き込む。設定画面で以下を保存すると、受信済み履歴を
 `dev.marufeuille.workout.session` record として `com.atproto.repo.putRecord` する。
+PDS へ送る record には実施日時、合計時間、種目、予定セット、実施セットを含める。心拍数データは含めず、
+Health Connect 側にのみ書き込む。
+設定画面や履歴画面の再同期は同じ `sourceRef` / rkey で全履歴を再 `putRecord` し、PDS 上の既存 record を
+現在の payload で上書きする。
 
 - PDS URL: `https://pds.example.com` など
 - ハンドル: `you.example.com` など

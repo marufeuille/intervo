@@ -25,7 +25,6 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
         val workoutSnapshot = history.workoutSnapshotJson.parseObjectOrNull()
         val exercises = parseExercises(
             snapshotsJson = history.exerciseSnapshotsJson,
-            hrJson = history.exerciseHrJson,
             performedSetsJson = history.performedSetsJson,
         )
         val completedAt = Instant.ofEpochMilli(history.completedAt)
@@ -43,7 +42,6 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
             put("startedAt", startedAt.toString())
             put("completedAt", completedAt.toString())
             put("durationSeconds", history.totalSeconds.coerceAtLeast(0))
-            history.heartRateSummary()?.let { put("heartRate", it) }
             if (exercises.isNotEmpty()) put("exercises", JsonArray(exercises))
             put("createdAt", Instant.now(clock).toString())
         }
@@ -51,20 +49,15 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
 
     private fun parseExercises(
         snapshotsJson: String,
-        hrJson: String,
         performedSetsJson: String,
     ): List<JsonObject> {
-        val hrByIndex = parseExerciseHr(hrJson)
         val performedSetsByIndex = parsePerformedSets(performedSetsJson)
         val array = snapshotsJson.parseArrayOrNull() ?: return emptyList()
         return array.mapIndexedNotNull { index, element ->
             val snapshot = element as? JsonObject ?: return@mapIndexedNotNull null
             val mode = snapshot.string("mode").toMode()
             val planned = snapshot.toPlanned(mode)
-            val performed = performedFor(
-                sets = performedSetsByIndex[index].orEmpty(),
-                heartRate = hrByIndex[index],
-            )
+            val performed = performedFor(sets = performedSetsByIndex[index].orEmpty())
             val name = snapshot.string("exercise_name")
                 ?.takeIf { it.isNotBlank() }
                 ?: "種目${index + 1}"
@@ -92,42 +85,11 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
         int("rep_rest_seconds")?.takeIf { it > 0 }?.let { put("repRestSeconds", it) }
     }
 
-    private fun CompanionWorkoutHistory.heartRateSummary(): JsonObject? {
-        val heartRate = buildJsonObject {
-            startHr?.takeIf { it >= 0 }?.let { put("start", it) }
-            avgHr?.takeIf { it >= 0 }?.let { put("avg", it) }
-            maxHr?.takeIf { it >= 0 }?.let { put("max", it) }
-        }
-        return heartRate.takeIf { it.isNotEmpty() }
-    }
-
-    private fun performedFor(
-        sets: List<JsonObject>,
-        heartRate: ExerciseHeartRate?,
-    ): JsonObject? {
-        val heartRateJson = heartRate?.toJson()
-        if (sets.isEmpty() && heartRateJson == null) return null
+    private fun performedFor(sets: List<JsonObject>): JsonObject? {
+        if (sets.isEmpty()) return null
         return buildJsonObject {
             if (sets.isNotEmpty()) put("sets", JsonArray(sets))
-            heartRateJson?.let { put("heartRate", it) }
         }
-    }
-
-    private fun ExerciseHeartRate.toJson(): JsonObject? {
-        val heartRate = buildJsonObject {
-            start?.takeIf { it >= 0 }?.let { put("start", it) }
-            end?.takeIf { it >= 0 }?.let { put("end", it) }
-        }
-        return heartRate.takeIf { it.isNotEmpty() }
-    }
-
-    private fun parseExerciseHr(hrJson: String): Map<Int, ExerciseHeartRate> {
-        val array = hrJson.parseArrayOrNull() ?: return emptyMap()
-        return array.mapIndexedNotNull { fallbackIndex, element ->
-            val obj = element as? JsonObject ?: return@mapIndexedNotNull null
-            val index = obj.int("exercise_index") ?: fallbackIndex
-            index to ExerciseHeartRate(start = obj.int("start_hr"), end = obj.int("end_hr"))
-        }.toMap()
     }
 
     private fun parsePerformedSets(performedSetsJson: String): Map<Int, List<JsonObject>> {
@@ -143,8 +105,6 @@ class WorkoutSessionRecordMapper(private val clock: Clock = Clock.systemUTC()) {
             }
         }.groupBy({ it.first }, { it.second })
     }
-
-    private data class ExerciseHeartRate(val start: Int?, val end: Int?)
 
     private fun String?.toMode(): String? = when (this) {
         "TIMED" -> "time"

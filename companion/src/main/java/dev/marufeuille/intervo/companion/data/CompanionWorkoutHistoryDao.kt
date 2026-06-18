@@ -29,6 +29,9 @@ interface CompanionWorkoutHistoryDao {
     @Query("SELECT * FROM companion_workout_history WHERE pdsSyncedAt IS NULL ORDER BY completedAt ASC")
     suspend fun getPendingPds(): List<CompanionWorkoutHistory>
 
+    @Query("SELECT * FROM companion_workout_history ORDER BY completedAt ASC")
+    suspend fun getAllForPdsRewrite(): List<CompanionWorkoutHistory>
+
     @Query("UPDATE companion_workout_history SET healthConnectWrittenAt = :writtenAt WHERE id = :id")
     suspend fun markHealthConnectWritten(id: String, writtenAt: Long)
 
