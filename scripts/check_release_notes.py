@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""リリースノート（docs/release-notes-<VERSION>.md）のフォーマット検証。
+"""リリースノート（docs/release-notes-<VERSION>.md）のファイル名・フォーマット検証。
 
 CI がリリース時に Play の「最新情報（What's new）」として抽出するブロックが
 必ず存在し、空でなく、Play の上限（500 文字）以内であることを保証する。
+また、release.yml がタグ vX.Y.Z から読む `docs/release-notes-X.Y.Z.md` と
+同じ名前になっていることを保証する。
 
 抽出仕様（release.yml の awk と一致させること）:
   「Play Console「最新情報」用」見出し以降の最初のコードフェンス（``` ... ```）の中身。
@@ -14,11 +16,13 @@ CI がリリース時に Play の「最新情報（What's new）」として抽�
 終了コード: 0=OK / 1=NG
 """
 import glob
+import os
 import re
 import sys
 
 MARKER = "Play Console「最新情報」用"
 LIMIT = 500  # Play の「最新情報」は 1 言語あたり 500 文字まで
+PATH_RE = re.compile(r"^docs/release-notes-(\d+\.\d+\.\d+)\.md$")
 
 
 def extract_whatsnew(text: str):
@@ -34,6 +38,17 @@ def extract_whatsnew(text: str):
 
 
 def check(path: str) -> bool:
+    normalized_path = path.replace("\\", "/")
+    if os.path.isabs(normalized_path):
+        normalized_path = os.path.relpath(normalized_path).replace("\\", "/")
+    normalized_path = normalized_path.removeprefix("./")
+    if not PATH_RE.fullmatch(normalized_path):
+        print(
+            f"::error file={path}::ファイル名は docs/release-notes-X.Y.Z.md にしてください"
+            "（例: docs/release-notes-1.9.4.md。v は付けません）"
+        )
+        return False
+
     try:
         text = open(path, encoding="utf-8").read()
     except OSError as e:

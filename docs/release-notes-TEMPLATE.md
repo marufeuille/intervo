@@ -5,7 +5,8 @@
 重要:
 - 「Play Console「最新情報」用」見出しの直下のコードフェンス ``` ... ``` の中身を、
   CI がそのまま Play の「最新情報（What's new / ja-JP）」として登録する。
-- このフェンスは必須・空にしない・500 文字以内。形式は CI（validate-release-notes）で検証される。
+- ファイル名は docs/release-notes-X.Y.Z.md（v なし）。このフェンスは必須・空にしない・500 文字以内。
+  ファイル名と形式は CI（validate-release-notes）で検証される。
 - ローカル確認: python3 scripts/check_release_notes.py docs/release-notes-<VERSION>.md
 -->
 
