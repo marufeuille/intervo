@@ -80,3 +80,54 @@ CI（GitHub Actions）では `android-emulator-runner` 上で同じタスクを�
 
 - 心拍 `♥` のアサーション（エミュレータの Health Services 次第で値が出ないことあり）
 - レップ式種目のスキップ、フリーセット記録の履歴反映の検証
+
+---
+
+# companion モジュールの E2E
+
+companion（スマホアプリ）の UI シナリオを phone エミュレータ上で検証する instrumented テスト。
+`:app` と同じ方針（Compose UI Test 単体・実 DB/Repository をそのまま動かす・ComponentActivity で
+MainActivity をバイパス）で、外部通信を伴わないローカル完結ジャーニーをカバーする。
+
+テストコード: `companion/src/androidTest/java/dev/marufeuille/intervo/companion/CompanionE2ETest.kt`
+
+## 実行方法
+
+phone エミュレータ（API 34 / `google_apis` 推奨。CI と同一構成）を起動した状態で:
+
+```bash
+./gradlew :companion:connectedDebugAndroidTest
+```
+
+レポート: `companion/build/reports/androidTests/connected/debug/index.html`
+
+CI では `ci.yml` の `instrumented-test-companion` ジョブ（main push のみ）と、`release.yml` の
+`e2e-companion` ジョブ（リリース前ゲート）で phone エミュレータを起動して実行する。Wear 側の E2E
+ジョブと並列。companion は Firebase 未使用のため google-services.json 復元ステップは不要。
+
+## シナリオ一覧
+
+| シナリオ | 操作 | 検証内容 |
+| --- | --- | --- |
+| 履歴がないときは空状態が表示される | 起動直後（History タブ初期表示） | 「まだ履歴がありません」 |
+| 履歴をシードすると一覧に出て詳細で確認できる | 履歴を DB に直接シード → カードタップ → 詳細 → 戻る | カード名・HC/PDS チップ、詳細の合計時間/セット、戻るで一覧復帰 |
+| PDS設定を入力して保存し削除できる | NavBar「設定」→ 3 フィールド入力 → 保存 → 削除 | 未設定→設定済み chip・App Password（保存済み）→ 削除で未設定に復帰 |
+
+> シナリオを追加・変更したら、この表も更新すること。
+
+## 設計メモ / ハマりどころ
+
+- **MainActivity バイパス**: `ComponentActivity` に `CompanionNavHost()` を直接載せる。`companionViewModel`
+  が `LocalContext` 経由で `CompanionApplication` を取得するため、空 Activity ホストでも実 Repository（実 DB）が
+  そのまま繋がる（Application はプロセス単位で `CompanionApplication` のまま）。
+- **決定性**: `@Before`/`@After` で `CompanionDatabase.clearAllTables()` と
+  `CompanionRepository.clearPdsSettings()`（Keystore + SharedPreferences）を呼ぶ。PDS 設定ジャーニーは
+  ローカル保存のみで通信しない。
+- **NavBar のタブ絞り込み（重要）**: タブ label（履歴/プラン/設定）は各画面の TopAppBar タイトルと同名で
+  `onNodeWithText` が複数ヒットする。NavigationBarItem はクリック可能だが TopAppBar の title Text は
+  クリック不可なので、`onAllNodes(hasText(label) and hasClickAction())[0]` で NavBar 側を絞り込む。
+- **スコープ外（Phase 2）**: Health Connect / PDS の実際の通信は `CompanionRepository` が `by lazy` で
+  直 new しており差し替え不可。HC はエミュレータで利用不可（`isAvailable=false` で「連携する」disabled）。
+  これらのジャーニーは Repository に差し替えフックを入れるか MockWebServer で擬製して別 PR で扱う。
+- **プラン一覧画面**: 本 PR 時点では main に Plans タブ / `PlanListScreen` が未マージのため対象外。
+  当該機能（別 PR）がマージされた後に「プラン空状態」シナリオを追加する。
