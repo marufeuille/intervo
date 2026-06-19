@@ -39,3 +39,7 @@ proguard/
 
 # CI が生成する Play 用リリースノート（whatsnew-<locale>）
 whatsnew/
+
+# graphify アーキテクチャグラフの中間ファイル・キャッシュ。
+# 成果物（graph.html / GRAPH_REPORT.md）は docs/graph/ にコミットして Pages で公開する。
+graphify-out/
