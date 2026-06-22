@@ -75,6 +75,7 @@ fun TimerScreen(
                 }
             },
             onSkipRest = { vm.skipRest() },
+            onAdjustRest = { vm.adjustRest(it) },
             onSkipRep = { vm.skipRep() },
             onFinishOpenEndedRepSet = { vm.finishOpenEndedRepSet() },
             onFinishCurrentSet = { vm.finishCurrentSet() },
