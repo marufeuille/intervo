@@ -71,6 +71,7 @@ class TimerEngineTest {
         val transition = TimerEngine.tick(state) // 3
         assertEquals(3, (transition.state.phase as TimerPhase.ExercisePhase).remainingSeconds)
         assertTrue(transition.effects.contains(TimerEffect.Vibrate(VibratePattern.COUNTDOWN_TICK)))
+        assertTrue(transition.effects.contains(TimerEffect.Beep(BeepPattern.COUNTDOWN)))
         assertTrue(transition.effects.contains(TimerEffect.Speak("3")))
     }
 
@@ -90,6 +91,7 @@ class TimerEngineTest {
         assertEquals(2, performed.durationSeconds)
         assertEquals(true, performed.completed)
         assertTrue(transition.effects.contains(TimerEffect.Vibrate(VibratePattern.EXERCISE_DONE)))
+        assertTrue(transition.effects.contains(TimerEffect.Beep(BeepPattern.PHASE_DONE)))
         assertTrue(transition.effects.contains(TimerEffect.Speak("休憩")))
     }
 
@@ -104,6 +106,7 @@ class TimerEngineTest {
         assertEquals(2, phase.currentSet)
         assertEquals(5, phase.remainingSeconds)
         assertTrue(transition.effects.contains(TimerEffect.Vibrate(VibratePattern.REST_DONE)))
+        assertTrue(transition.effects.contains(TimerEffect.Beep(BeepPattern.PHASE_DONE)))
         assertTrue(transition.effects.contains(TimerEffect.Speak("始め")))
     }
 
@@ -140,6 +143,7 @@ class TimerEngineTest {
         val transition = TimerEngine.tick(resting)
         assertEquals(TimerPhase.Complete, transition.state.phase)
         assertTrue(transition.effects.contains(TimerEffect.Vibrate(VibratePattern.WORKOUT_COMPLETE)))
+        assertTrue(transition.effects.contains(TimerEffect.Beep(BeepPattern.WORKOUT_COMPLETE)))
         assertTrue(transition.effects.contains(TimerEffect.Speak("完了")))
         assertTrue(transition.effects.contains(TimerEffect.WorkoutFinished))
     }
@@ -271,6 +275,47 @@ class TimerEngineTest {
     @Test
     fun `skipRest returns null during exercise phase`() {
         assertNull(TimerEngine.skipRest(startState(exercise())))
+    }
+
+    @Test
+    fun `adjustRest adds seconds during rest phase`() {
+        val base = startState(exercise(durationSeconds = 5, sets = 2, restSeconds = 30))
+        val resting = base.copy(
+            phase = TimerPhase.RestPhase(exerciseIndex = 0, completedSets = 1, remainingSeconds = 25)
+        )
+        val transition = TimerEngine.adjustRest(resting, 10)!!
+        val phase = transition.state.phase as TimerPhase.RestPhase
+        assertEquals(35, phase.remainingSeconds)
+        assertTrue(transition.effects.isEmpty())
+    }
+
+    @Test
+    fun `adjustRest subtracts seconds during rep rest phase`() {
+        val ex = exercise(mode = ExerciseMode.REPS, durationSeconds = 3, sets = 1, repsPerSet = 3, repRestSeconds = 20)
+        val base = startState(ex)
+        val resting = base.copy(
+            phase = TimerPhase.RepRestPhase(exerciseIndex = 0, currentSet = 1, completedReps = 1, remainingSeconds = 15)
+        )
+        val transition = TimerEngine.adjustRest(resting, -10)!!
+        val phase = transition.state.phase as TimerPhase.RepRestPhase
+        assertEquals(5, phase.remainingSeconds)
+        assertTrue(transition.effects.isEmpty())
+    }
+
+    @Test
+    fun `adjustRest keeps at least one second`() {
+        val base = startState(exercise(durationSeconds = 5, sets = 2, restSeconds = 30))
+        val resting = base.copy(
+            phase = TimerPhase.RestPhase(exerciseIndex = 0, completedSets = 1, remainingSeconds = 5)
+        )
+        val transition = TimerEngine.adjustRest(resting, -10)!!
+        val phase = transition.state.phase as TimerPhase.RestPhase
+        assertEquals(1, phase.remainingSeconds)
+    }
+
+    @Test
+    fun `adjustRest returns null during exercise phase`() {
+        assertNull(TimerEngine.adjustRest(startState(exercise()), 10))
     }
 
     // ---- free set (duration unlimited) ----

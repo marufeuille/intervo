@@ -31,6 +31,7 @@ internal fun ActiveTimerContent(
     state: TimerState,
     onTap: () -> Unit,
     onSkipRest: () -> Unit,
+    onAdjustRest: (Int) -> Unit,
     onSkipRep: () -> Unit,
     onFinishOpenEndedRepSet: () -> Unit,
     onFinishCurrentSet: () -> Unit,
@@ -120,12 +121,19 @@ internal fun ActiveTimerContent(
                     FinishSetButton(onClick = onFinishCurrentSet)
                 }
             } else if (phase is TimerPhase.RepRestPhase && canFinishFixedRepSet) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SkipButton(onClick = onSkipRest)
-                    FinishSetButton(onClick = onFinishCurrentSet)
-                }
+                RestAdjustButtons(
+                    onSubtract = { onAdjustRest(-10) },
+                    onSkip = onSkipRest,
+                    onAdd = { onAdjustRest(10) }
+                )
+                Spacer(Modifier.height(2.dp))
+                FinishSetButton(onClick = onFinishCurrentSet)
             } else if (isRestLike) {
-                SkipButton(onClick = onSkipRest)
+                RestAdjustButtons(
+                    onSubtract = { onAdjustRest(-10) },
+                    onSkip = onSkipRest,
+                    onAdd = { onAdjustRest(10) }
+                )
             } else if (canFinishTimedSet) {
                 FinishSetButton(onClick = onFinishCurrentSet)
             } else if (nextExercise != null) {
@@ -191,6 +199,30 @@ private fun timerDisplayInfo(state: TimerState): TimerDisplayInfo = when (val ph
         )
     }
     else -> TimerDisplayInfo(0, "", "", Color.Gray, "", null, 1)
+}
+
+@Composable
+private fun RestAdjustButtons(
+    onSubtract: () -> Unit,
+    onSkip: () -> Unit,
+    onAdd: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        RestDeltaButton("-10", onSubtract)
+        SkipButton(onClick = onSkip)
+        RestDeltaButton("+10", onAdd)
+    }
+}
+
+@Composable
+private fun RestDeltaButton(text: String, onClick: () -> Unit) {
+    CompactButton(
+        onClick = onClick,
+        modifier = Modifier.size(width = 42.dp, height = 28.dp),
+        colors = ButtonDefaults.buttonColors(backgroundColor = ButtonDark)
+    ) {
+        Text(text, fontSize = 10.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 @Composable

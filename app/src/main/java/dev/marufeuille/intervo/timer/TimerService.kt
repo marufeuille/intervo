@@ -41,6 +41,7 @@ class TimerService : Service() {
     private var countdownJob: Job? = null
     private lateinit var vibrationManager: VibrationManager
     private lateinit var speechManager: SpeechManager
+    private lateinit var beepManager: BeepManager
     private lateinit var repository: WorkoutRepository
     private lateinit var snapshotStore: TimerSnapshotStore
     private lateinit var heartRateManager: HeartRateManager
@@ -63,6 +64,7 @@ class TimerService : Service() {
         super.onCreate()
         vibrationManager = VibrationManager(this)
         speechManager = SpeechManager(this)
+        beepManager = BeepManager()
         repository = WorkoutRepository(
             AppDatabase.getInstance(applicationContext),
             WorkoutHistorySyncClient(applicationContext)
@@ -86,6 +88,7 @@ class TimerService : Service() {
         stopHeartRate()
         releaseWakeLock()
         speechManager.shutdown()
+        beepManager.release()
         serviceScope.cancel()
     }
 
@@ -194,6 +197,8 @@ class TimerService : Service() {
 
     fun skipRest() = applyUserAction { TimerEngine.skipRest(it) }
 
+    fun adjustRest(deltaSeconds: Int) = applyUserAction { TimerEngine.adjustRest(it, deltaSeconds) }
+
     fun skipRep() = applyUserAction { TimerEngine.skipRep(it) }
 
     fun finishFreeSet(reps: Int? = null) = applyUserAction { TimerEngine.finishFreeSet(it, reps) }
@@ -235,6 +240,7 @@ class TimerService : Service() {
             when (effect) {
                 is TimerEffect.Vibrate -> vibrationManager.vibrate(effect.pattern)
                 is TimerEffect.Speak -> speechManager.speak(effect.text)
+                is TimerEffect.Beep -> beepManager.beep(effect.pattern)
                 TimerEffect.WorkoutFinished -> {
                     releaseWakeLock()
                     finishWorkout(transition.state)

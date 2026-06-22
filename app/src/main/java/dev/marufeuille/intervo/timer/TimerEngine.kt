@@ -11,7 +11,14 @@ import dev.marufeuille.intervo.data.isOpenEndedReps
 sealed interface TimerEffect {
     data class Vibrate(val pattern: VibratePattern) : TimerEffect
     data class Speak(val text: String) : TimerEffect
+    data class Beep(val pattern: BeepPattern) : TimerEffect
     object WorkoutFinished : TimerEffect
+}
+
+enum class BeepPattern {
+    COUNTDOWN,
+    PHASE_DONE,
+    WORKOUT_COMPLETE
 }
 
 data class TimerTransition(
@@ -57,7 +64,11 @@ object TimerEngine {
                     phase.remainingSeconds - 1
                 ) { phase.copy(remainingSeconds = it) }
                 else -> finishExerciseInterval(
-                    current, phase, listOf(TimerEffect.Vibrate(VibratePattern.EXERCISE_DONE))
+                    current, phase,
+                    listOf(
+                        TimerEffect.Vibrate(VibratePattern.EXERCISE_DONE),
+                        TimerEffect.Beep(BeepPattern.PHASE_DONE)
+                    )
                 )
             }
         }
@@ -67,7 +78,10 @@ object TimerEngine {
             } else {
                 advanceAfterRepRest(
                     current, phase.exerciseIndex, phase.currentSet, phase.completedReps,
-                    listOf(TimerEffect.Vibrate(VibratePattern.REST_DONE))
+                    listOf(
+                        TimerEffect.Vibrate(VibratePattern.REST_DONE),
+                        TimerEffect.Beep(BeepPattern.PHASE_DONE)
+                    )
                 )
             }
         is TimerPhase.RestPhase ->
@@ -76,7 +90,10 @@ object TimerEngine {
             } else {
                 advanceAfterRest(
                     current, phase.exerciseIndex, phase.completedSets,
-                    listOf(TimerEffect.Vibrate(VibratePattern.REST_DONE))
+                    listOf(
+                        TimerEffect.Vibrate(VibratePattern.REST_DONE),
+                        TimerEffect.Beep(BeepPattern.PHASE_DONE)
+                    )
                 )
             }
         else -> TimerTransition(current)
@@ -87,6 +104,16 @@ object TimerEngine {
             advanceAfterRest(current, phase.exerciseIndex, phase.completedSets, emptyList())
         is TimerPhase.RepRestPhase ->
             advanceAfterRepRest(current, phase.exerciseIndex, phase.currentSet, phase.completedReps, emptyList())
+        else -> null
+    }
+
+    fun adjustRest(current: TimerState, deltaSeconds: Int): TimerTransition? = when (val phase = current.phase) {
+        is TimerPhase.RestPhase -> TimerTransition(
+            current.copy(phase = phase.copy(remainingSeconds = (phase.remainingSeconds + deltaSeconds).coerceAtLeast(1)))
+        )
+        is TimerPhase.RepRestPhase -> TimerTransition(
+            current.copy(phase = phase.copy(remainingSeconds = (phase.remainingSeconds + deltaSeconds).coerceAtLeast(1)))
+        )
         else -> null
     }
 
@@ -197,6 +224,7 @@ object TimerEngine {
         val effects = if (next in 1..3) {
             listOf(
                 TimerEffect.Vibrate(VibratePattern.COUNTDOWN_TICK),
+                TimerEffect.Beep(BeepPattern.COUNTDOWN),
                 TimerEffect.Speak(next.toString())
             )
         } else {
@@ -376,6 +404,7 @@ object TimerEngine {
                 current.copy(phase = TimerPhase.Complete),
                 leadEffects + listOf(
                     TimerEffect.Vibrate(VibratePattern.WORKOUT_COMPLETE),
+                    TimerEffect.Beep(BeepPattern.WORKOUT_COMPLETE),
                     TimerEffect.Speak("完了"),
                     TimerEffect.WorkoutFinished
                 )
