@@ -7,6 +7,8 @@ import dev.marufeuille.intervo.data.PerformedSetRecordInput
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
+import dev.marufeuille.intervo.data.isRepRestUnlimited
+import dev.marufeuille.intervo.data.isRestUnlimited
 
 sealed interface TimerEffect {
     data class Vibrate(val pattern: VibratePattern) : TimerEffect
@@ -61,24 +63,36 @@ object TimerEngine {
                 )
             }
         }
-        is TimerPhase.RepRestPhase ->
-            if (phase.remainingSeconds > 1) {
-                countdownStep(current, phase.remainingSeconds - 1) { phase.copy(remainingSeconds = it) }
-            } else {
-                advanceAfterRepRest(
+        is TimerPhase.RepRestPhase -> {
+            val exercise = current.exercises.getOrNull(phase.exerciseIndex)
+            when {
+                exercise?.isRepRestUnlimited() == true -> TimerTransition(
+                    current.copy(phase = phase.copy(remainingSeconds = phase.remainingSeconds + 1))
+                )
+                phase.remainingSeconds > 1 -> countdownStep(
+                    current, phase.remainingSeconds - 1
+                ) { phase.copy(remainingSeconds = it) }
+                else -> advanceAfterRepRest(
                     current, phase.exerciseIndex, phase.currentSet, phase.completedReps,
                     listOf(TimerEffect.Vibrate(VibratePattern.REST_DONE))
                 )
             }
-        is TimerPhase.RestPhase ->
-            if (phase.remainingSeconds > 1) {
-                countdownStep(current, phase.remainingSeconds - 1) { phase.copy(remainingSeconds = it) }
-            } else {
-                advanceAfterRest(
+        }
+        is TimerPhase.RestPhase -> {
+            val exercise = current.exercises.getOrNull(phase.exerciseIndex)
+            when {
+                exercise?.isRestUnlimited() == true -> TimerTransition(
+                    current.copy(phase = phase.copy(remainingSeconds = phase.remainingSeconds + 1))
+                )
+                phase.remainingSeconds > 1 -> countdownStep(
+                    current, phase.remainingSeconds - 1
+                ) { phase.copy(remainingSeconds = it) }
+                else -> advanceAfterRest(
                     current, phase.exerciseIndex, phase.completedSets,
                     listOf(TimerEffect.Vibrate(VibratePattern.REST_DONE))
                 )
             }
+        }
         else -> TimerTransition(current)
     }
 
@@ -214,14 +228,14 @@ object TimerEngine {
         val hasMoreReps = exercise.mode == ExerciseMode.REPS &&
             (exercise.isOpenEndedReps() || phase.currentRep < exercise.effectiveRepsPerSet())
         return if (hasMoreReps) {
-            if (exercise.repRestSeconds > 0) {
+            if (exercise.isRepRestUnlimited() || exercise.repRestSeconds > 0) {
                 TimerTransition(
                     current.copy(
                         phase = TimerPhase.RepRestPhase(
                             exerciseIndex = phase.exerciseIndex,
                             currentSet = phase.currentSet,
                             completedReps = phase.currentRep,
-                            remainingSeconds = exercise.repRestSeconds
+                            remainingSeconds = if (exercise.isRepRestUnlimited()) 0 else exercise.repRestSeconds
                         )
                     ),
                     leadEffects
@@ -244,13 +258,13 @@ object TimerEngine {
         val exercise = current.exercises[exerciseIndex]
         val recorded = performedSet?.let { current.appendPerformedSet(it) }
             ?: current.recordPerformedSet(exerciseIndex, currentSet)
-        return if (exercise.restSeconds > 0) {
+        return if (exercise.isRestUnlimited() || exercise.restSeconds > 0) {
             TimerTransition(
                 recorded.copy(
                     phase = TimerPhase.RestPhase(
                         exerciseIndex = exerciseIndex,
                         completedSets = currentSet,
-                        remainingSeconds = exercise.restSeconds
+                        remainingSeconds = if (exercise.isRestUnlimited()) 0 else exercise.restSeconds
                     )
                 ),
                 leadEffects + TimerEffect.Speak("休憩")

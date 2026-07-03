@@ -118,13 +118,21 @@ fun ExerciseEditScreen(
                     }
                 }
                 item {
-                    StepperRow(
-                        label = "間休憩",
-                        value = "${vm.repRestSeconds}秒",
-                        onMinus = { vm.adjustRepRest(-REP_REST_STEP) },
-                        onPlus = { vm.adjustRepRest(REP_REST_STEP) },
-                        accentColor = RestBlue
+                    RepRestTargetToggle(
+                        unlimited = vm.isRepRestUnlimited(),
+                        onChange = vm::setRepRestUnlimited
                     )
+                }
+                if (!vm.isRepRestUnlimited()) {
+                    item {
+                        StepperRow(
+                            label = "間休憩",
+                            value = "${vm.repRestSeconds}秒",
+                            onMinus = { vm.adjustRepRest(-REP_REST_STEP) },
+                            onPlus = { vm.adjustRepRest(REP_REST_STEP) },
+                            accentColor = RestBlue
+                        )
+                    }
                 }
             }
             item {
@@ -137,13 +145,21 @@ fun ExerciseEditScreen(
                 )
             }
             item {
-                StepperRow(
-                    label = "休憩",
-                    value = "${vm.restSeconds}秒",
-                    onMinus = { vm.adjustRest(-REST_STEP) },
-                    onPlus = { vm.adjustRest(REST_STEP) },
-                    accentColor = RestBlue
+                RestTargetToggle(
+                    unlimited = vm.isRestUnlimited(),
+                    onChange = vm::setRestUnlimited
                 )
+            }
+            if (!vm.isRestUnlimited()) {
+                item {
+                    StepperRow(
+                        label = "休憩",
+                        value = "${vm.restSeconds}秒",
+                        onMinus = { vm.adjustRest(-REST_STEP) },
+                        onPlus = { vm.adjustRest(REST_STEP) },
+                        accentColor = RestBlue
+                    )
+                }
             }
             item {
                 Spacer(Modifier.height(8.dp))

@@ -106,7 +106,9 @@ class WorkoutPdsRecordMapper(private val clock: Clock = Clock.systemUTC()) {
                 put("durationSeconds", it)
             }
         }
+        // rest の -1（REST_UNLIMITED）は推定時間に算入しないため除外。
         int("rest_seconds")?.takeIf { it >= 0 }?.let { put("restSeconds", it) }
+        // repRest の -1（REST_UNLIMITED）も同様に除外。
         int("rep_rest_seconds")?.takeIf { it > 0 }?.let { put("repRestSeconds", it) }
     }
 

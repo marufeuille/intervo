@@ -4,6 +4,7 @@ import dev.marufeuille.intervo.data.DURATION_UNLIMITED
 import dev.marufeuille.intervo.data.Exercise
 import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.REPS_OPEN_ENDED
+import dev.marufeuille.intervo.data.REST_UNLIMITED
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -401,5 +402,83 @@ class TimerEngineTest {
         assertEquals(state.totalSeconds, ticks)
         assertEquals(2, state.performedSetRecords.size)
         assertEquals(listOf(2, 2), state.performedSetRecords.map { it.reps })
+    }
+
+    // ---- unlimited rest ----
+
+    @Test
+    fun `set finish enters unlimited rest phase with remainingSeconds zero`() {
+        var state = startState(exercise(durationSeconds = 1, sets = 2, restSeconds = REST_UNLIMITED))
+        val transition = TimerEngine.tick(state)
+        val phase = transition.state.phase as TimerPhase.RestPhase
+        assertEquals(1, phase.completedSets)
+        assertEquals(0, phase.remainingSeconds)
+        assertTrue(transition.effects.contains(TimerEffect.Speak("休憩")))
+    }
+
+    @Test
+    fun `unlimited rest counts up without auto advancing`() {
+        val base = startState(exercise(durationSeconds = 1, sets = 2, restSeconds = REST_UNLIMITED))
+        var state = TimerEngine.tick(base).state // -> RestPhase, remaining 0
+        assertTrue(state.phase is TimerPhase.RestPhase)
+        repeat(10) { state = TimerEngine.tick(state).state }
+        val phase = state.phase as TimerPhase.RestPhase
+        assertEquals(10, phase.remainingSeconds)
+    }
+
+    @Test
+    fun `skipRest advances from unlimited rest phase`() {
+        val base = startState(exercise(durationSeconds = 5, sets = 2, restSeconds = REST_UNLIMITED))
+        val resting = base.copy(
+            phase = TimerPhase.RestPhase(exerciseIndex = 0, completedSets = 1, remainingSeconds = 42)
+        )
+        val transition = TimerEngine.skipRest(resting)!!
+        val phase = transition.state.phase as TimerPhase.ExercisePhase
+        assertEquals(2, phase.currentSet)
+    }
+
+    @Test
+    fun `totalSeconds excludes unlimited rest`() {
+        val ex = exercise(durationSeconds = 10, sets = 3, restSeconds = REST_UNLIMITED)
+        val state = startState(ex)
+        assertEquals(30, state.totalSeconds)
+    }
+
+    @Test
+    fun `rep finish enters unlimited rep rest phase with remainingSeconds zero`() {
+        val ex = exercise(
+            mode = ExerciseMode.REPS, durationSeconds = 1, sets = 1,
+            repsPerSet = 2, repRestSeconds = REST_UNLIMITED
+        )
+        val transition = TimerEngine.tick(startState(ex))
+        val phase = transition.state.phase as TimerPhase.RepRestPhase
+        assertEquals(0, phase.remainingSeconds)
+    }
+
+    @Test
+    fun `unlimited rep rest counts up without auto advancing`() {
+        val ex = exercise(
+            mode = ExerciseMode.REPS, durationSeconds = 1, sets = 1,
+            repsPerSet = 2, repRestSeconds = REST_UNLIMITED
+        )
+        var state = TimerEngine.tick(startState(ex)).state // -> RepRestPhase, remaining 0
+        repeat(7) { state = TimerEngine.tick(state).state }
+        val phase = state.phase as TimerPhase.RepRestPhase
+        assertEquals(7, phase.remainingSeconds)
+    }
+
+    @Test
+    fun `skipRest advances from unlimited rep rest phase`() {
+        val ex = exercise(
+            mode = ExerciseMode.REPS, durationSeconds = 5, sets = 1,
+            repsPerSet = 2, repRestSeconds = REST_UNLIMITED
+        )
+        val base = startState(ex)
+        val resting = base.copy(
+            phase = TimerPhase.RepRestPhase(exerciseIndex = 0, currentSet = 1, completedReps = 1, remainingSeconds = 20)
+        )
+        val transition = TimerEngine.skipRest(resting)!!
+        val phase = transition.state.phase as TimerPhase.ExercisePhase
+        assertEquals(2, phase.currentRep)
     }
 }
