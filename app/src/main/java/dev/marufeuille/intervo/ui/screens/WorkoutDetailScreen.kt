@@ -28,6 +28,9 @@ import dev.marufeuille.intervo.data.WorkoutRepository
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
+import dev.marufeuille.intervo.data.isRestUnlimited
+import dev.marufeuille.intervo.data.isDurationUnlimited
+import dev.marufeuille.intervo.data.isOpenEndedReps
 import dev.marufeuille.intervo.ui.theme.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -219,15 +222,15 @@ private fun ExerciseRow(
             val summary = when (exercise.mode) {
                 ExerciseMode.TIMED ->
                     if (exercise.isDurationUnlimited()) {
-                        "自由×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                        "自由×${exercise.sets}set / ${restLabel(exercise)}"
                     } else {
-                        "${exercise.durationSeconds}秒×${exercise.sets} / 休${exercise.restSeconds}秒"
+                        "${exercise.durationSeconds}秒×${exercise.sets} / ${restLabel(exercise)}"
                     }
                 ExerciseMode.REPS ->
                     if (exercise.isOpenEndedReps()) {
-                        "${exercise.durationSeconds}秒×限界×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                        "${exercise.durationSeconds}秒×限界×${exercise.sets}set / ${restLabel(exercise)}"
                     } else {
-                        "${exercise.durationSeconds}秒×${exercise.effectiveRepsPerSet()}回×${exercise.sets}set / 休${exercise.restSeconds}秒"
+                        "${exercise.durationSeconds}秒×${exercise.effectiveRepsPerSet()}回×${exercise.sets}set / ${restLabel(exercise)}"
                     }
             }
             Text(summary, fontSize = 11.sp, color = TextSecondary)
@@ -256,4 +259,11 @@ private fun ReorderButton(symbol: String, enabled: Boolean, onClick: () -> Unit)
     ) {
         Text(symbol, fontSize = 14.sp, color = color)
     }
+}
+
+/** 休憩ラベル。無制限→「休憩 自由」、0秒→「休憩なし」、それ以外→「休N秒」。 */
+private fun restLabel(ex: Exercise): String = when {
+    ex.isRestUnlimited() -> "休憩 自由"
+    ex.restSeconds == 0 -> "休憩なし"
+    else -> "休${ex.restSeconds}秒"
 }

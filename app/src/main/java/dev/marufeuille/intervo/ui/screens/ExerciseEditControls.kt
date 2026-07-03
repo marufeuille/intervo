@@ -77,8 +77,55 @@ internal fun RepsTargetToggle(
 }
 
 @Composable
-private fun ModePill(label: String, selected: Boolean, onClick: () -> Unit) {
-    val bg = if (selected) ExerciseOrange else ButtonDark
+internal fun RestTargetToggle(
+    unlimited: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("休憩", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(40.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            ModePill(label = "指定", selected = !unlimited, accentColor = RestBlue) { onChange(false) }
+            ModePill(label = "自由", selected = unlimited, accentColor = RestBlue) { onChange(true) }
+        }
+    }
+}
+
+@Composable
+internal fun RepRestTargetToggle(
+    unlimited: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("間休憩", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.width(40.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            ModePill(label = "指定", selected = !unlimited, accentColor = RestBlue) { onChange(false) }
+            ModePill(label = "自由", selected = unlimited, accentColor = RestBlue) { onChange(true) }
+        }
+    }
+}
+
+@Composable
+private fun ModePill(
+    label: String,
+    selected: Boolean,
+    accentColor: Color = ExerciseOrange,
+    onClick: () -> Unit
+) {
+    val bg = if (selected) accentColor else ButtonDark
     val fg = if (selected) Color.White else TextSecondary
     CompactButton(
         onClick = onClick,

@@ -97,6 +97,68 @@ class WorkoutPdsRecordMapperTest {
         assertEquals("session-001", mapper.checkinRkey(history))
     }
 
+    @Test
+    fun unlimitedRestIsOmittedFromPlanned() {
+        val mapper = mapper()
+        val history = historyWithUnlimitedRest()
+
+        val record = mapper.mapPlan(history)
+
+        val exercises = record["exercises"]?.jsonArray
+        assertNotNull(exercises)
+        assertEquals(1, exercises!!.size)
+
+        val planned = exercises[0].jsonObject["planned"]?.jsonObject
+        assertNotNull(planned)
+        // rest_seconds = -1 (REST_UNLIMITED) は planned から省略される
+        assertFalse(planned!!.containsKey("restSeconds"))
+        assertFalse(planned.containsKey("repRestSeconds"))
+    }
+
+    private fun historyWithUnlimitedRest(): CompanionWorkoutHistory {
+        val completedAt = Instant.parse("2026-06-17T12:20:34Z")
+        return CompanionWorkoutHistory(
+            id = "session-002",
+            workoutId = "workout-002",
+            workoutName = "限界セット",
+            completedAt = completedAt.toEpochMilli(),
+            totalSeconds = 1234,
+            exerciseCount = 1,
+            workoutSnapshotJson = """
+                {"workout_id":"workout-002","workout_name":"限界セット","sort_order":0,"exercise_type":"STRENGTH_TRAINING"}
+            """.trimIndent(),
+            exerciseSnapshotsJson = """
+                [
+                  {
+                    "exercise_id":"pushup",
+                    "workout_id":"workout-002",
+                    "exercise_name":"腕立て伏せ",
+                    "mode":"TIMED",
+                    "duration_seconds":20,
+                    "sets":3,
+                    "rest_seconds":-1,
+                    "reps_per_set":1,
+                    "rep_rest_seconds":-1,
+                    "sort_order":0
+                  }
+                ]
+            """.trimIndent(),
+            startHr = 80,
+            avgHr = 130,
+            maxHr = 165,
+            exerciseHrJson = """
+                [{"exercise_index":0,"exercise_name":"腕立て伏せ","start_hr":110,"end_hr":150,"sort_order":0}]
+            """.trimIndent(),
+            performedSetsJson = """
+                [
+                  {"exercise_index":0,"exercise_name":"腕立て伏せ","set_index":0,"duration_seconds":20,"completed":true,"sort_order":0},
+                  {"exercise_index":0,"exercise_name":"腕立て伏せ","set_index":1,"duration_seconds":20,"completed":true,"sort_order":1},
+                  {"exercise_index":0,"exercise_name":"腕立て伏せ","set_index":2,"duration_seconds":20,"completed":true,"sort_order":2}
+                ]
+            """.trimIndent(),
+        )
+    }
+
     private fun mapper(): WorkoutPdsRecordMapper =
         WorkoutPdsRecordMapper(
             clock = Clock.fixed(Instant.parse("2026-06-17T12:20:40Z"), ZoneOffset.UTC),

@@ -7,6 +7,8 @@ import dev.marufeuille.intervo.data.PerformedSetRecordInput
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
+import dev.marufeuille.intervo.data.isRepRestUnlimited
+import dev.marufeuille.intervo.data.isRestUnlimited
 
 sealed class TimerPhase {
     object Idle : TimerPhase()
@@ -73,9 +75,11 @@ data class TimerState(
                     0
                 } else {
                     val reps = ex.effectiveRepsPerSet()
-                    ex.durationSeconds * reps + ex.repRestSeconds * (reps - 1).coerceAtLeast(0)
+                    val repRest = if (ex.isRepRestUnlimited()) 0 else ex.repRestSeconds * (reps - 1).coerceAtLeast(0)
+                    ex.durationSeconds * reps + repRest
                 }
             }
-            perSet * ex.sets + ex.restSeconds * ex.sets
+            val rest = if (ex.isRestUnlimited()) 0 else ex.restSeconds * ex.sets
+            perSet * ex.sets + rest
         }
 }

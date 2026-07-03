@@ -54,6 +54,7 @@ const val SETS_MAX = 20
 const val REST_MIN = 0
 const val REST_MAX = 120
 const val REST_STEP = 5
+const val REST_UNLIMITED = -1
 const val REPS_PER_SET_MIN = 1
 const val REPS_PER_SET_MAX = 30
 const val REPS_OPEN_ENDED = -1
@@ -66,6 +67,10 @@ fun Exercise.isOpenEndedReps(): Boolean =
 
 fun Exercise.isDurationUnlimited(): Boolean =
     mode == ExerciseMode.TIMED && durationSeconds == DURATION_UNLIMITED
+
+fun Exercise.isRestUnlimited(): Boolean = restSeconds == REST_UNLIMITED
+
+fun Exercise.isRepRestUnlimited(): Boolean = repRestSeconds == REST_UNLIMITED
 
 fun Exercise.effectiveRepsPerSet(): Int =
     if (isOpenEndedReps()) REPS_OPEN_ENDED else repsPerSet.coerceIn(REPS_PER_SET_MIN, REPS_PER_SET_MAX)

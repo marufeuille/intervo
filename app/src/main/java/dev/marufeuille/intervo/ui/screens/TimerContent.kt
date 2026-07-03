@@ -18,6 +18,8 @@ import dev.marufeuille.intervo.data.ExerciseMode
 import dev.marufeuille.intervo.data.effectiveRepsPerSet
 import dev.marufeuille.intervo.data.isDurationUnlimited
 import dev.marufeuille.intervo.data.isOpenEndedReps
+import dev.marufeuille.intervo.data.isRepRestUnlimited
+import dev.marufeuille.intervo.data.isRestUnlimited
 import dev.marufeuille.intervo.timer.TimerPhase
 import dev.marufeuille.intervo.timer.TimerState
 import dev.marufeuille.intervo.ui.theme.*
@@ -168,19 +170,21 @@ private fun timerDisplayInfo(state: TimerState): TimerDisplayInfo = when (val ph
     is TimerPhase.RepRestPhase -> {
         val ex = state.exercises.getOrNull(phase.exerciseIndex)
         val isOpenEndedReps = ex?.isOpenEndedReps() == true
+        val isRepRestFree = ex?.isRepRestUnlimited() == true
         val targetReps = ex?.effectiveRepsPerSet() ?: 0
         TimerDisplayInfo(
             remaining = phase.remainingSeconds,
             exerciseName = ex?.name ?: "",
-            phaseLabel = "レップ間",
+            phaseLabel = if (isRepRestFree) "レップ間（自由）" else "レップ間",
             phaseColor = RestBlue,
             setInfo = "${phase.currentSet} / ${ex?.sets ?: 0} セット",
             repInfo = if (isOpenEndedReps) "${phase.completedReps}回完了 / 限界" else "${phase.completedReps} / $targetReps レップ",
-            totalSecs = ex?.repRestSeconds?.takeIf { it > 0 } ?: 1
+            totalSecs = if (isRepRestFree) 0 else ex?.repRestSeconds?.takeIf { it > 0 } ?: 1
         )
     }
     is TimerPhase.RestPhase -> {
         val ex = state.exercises.getOrNull(phase.exerciseIndex)
+        val isRestFree = ex?.isRestUnlimited() == true
         val isTransitionToNext = ex != null && phase.completedSets >= ex.sets
         val upcoming = if (isTransitionToNext) {
             state.exercises.getOrNull(phase.exerciseIndex + 1) ?: ex
@@ -191,11 +195,11 @@ private fun timerDisplayInfo(state: TimerState): TimerDisplayInfo = when (val ph
         TimerDisplayInfo(
             remaining = phase.remainingSeconds,
             exerciseName = upcoming?.name ?: "",
-            phaseLabel = "休憩中",
+            phaseLabel = if (isRestFree) "休憩（自由）" else "休憩中",
             phaseColor = RestBlue,
             setInfo = "$upcomingSetNum / ${upcoming?.sets ?: 0} セット",
             repInfo = null,
-            totalSecs = ex?.restSeconds ?: 1
+            totalSecs = if (isRestFree) 0 else ex?.restSeconds?.takeIf { it > 0 } ?: 1
         )
     }
     else -> TimerDisplayInfo(0, "", "", Color.Gray, "", null, 1)
@@ -281,8 +285,14 @@ internal fun AmbientTimerContent(state: TimerState) {
                 else -> "運動中"
             }
         }
-        is TimerPhase.RepRestPhase -> phase.remainingSeconds to "レップ間"
-        is TimerPhase.RestPhase -> phase.remainingSeconds to "休憩中"
+        is TimerPhase.RepRestPhase -> {
+            val ex = state.exercises.getOrNull(phase.exerciseIndex)
+            phase.remainingSeconds to if (ex?.isRepRestUnlimited() == true) "レップ間（自由）" else "レップ間"
+        }
+        is TimerPhase.RestPhase -> {
+            val ex = state.exercises.getOrNull(phase.exerciseIndex)
+            phase.remainingSeconds to if (ex?.isRestUnlimited() == true) "休憩（自由）" else "休憩中"
+        }
         else -> 0 to ""
     }
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -68,8 +68,17 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
     fun adjustSets(delta: Int) {
         sets = (sets + delta).coerceIn(SETS_MIN, SETS_MAX)
     }
+    fun setRestUnlimited(unlimited: Boolean) {
+        restSeconds = if (unlimited) {
+            REST_UNLIMITED
+        } else {
+            restSeconds.takeIf { it != REST_UNLIMITED } ?: REST_MIN
+        }
+    }
+    fun isRestUnlimited(): Boolean = restSeconds == REST_UNLIMITED
     fun adjustRest(delta: Int) {
-        restSeconds = (restSeconds + delta).coerceIn(REST_MIN, REST_MAX)
+        val current = if (restSeconds == REST_UNLIMITED) REST_MIN else restSeconds
+        restSeconds = (current + delta).coerceIn(REST_MIN, REST_MAX)
     }
     fun adjustRepsPerSet(delta: Int) {
         repsPerSet = (repsPerSet.takeIf { it >= REPS_PER_SET_MIN } ?: REPS_PER_SET_MIN)
@@ -83,8 +92,17 @@ class ExerciseEditViewModel(app: Application, saved: SavedStateHandle) : Android
             repsPerSet.takeIf { it >= REPS_PER_SET_MIN } ?: REPS_PER_SET_MIN
         }
     }
+    fun setRepRestUnlimited(unlimited: Boolean) {
+        repRestSeconds = if (unlimited) {
+            REST_UNLIMITED
+        } else {
+            repRestSeconds.takeIf { it != REST_UNLIMITED } ?: REP_REST_MIN
+        }
+    }
+    fun isRepRestUnlimited(): Boolean = repRestSeconds == REST_UNLIMITED
     fun adjustRepRest(delta: Int) {
-        repRestSeconds = (repRestSeconds + delta).coerceIn(REP_REST_MIN, REP_REST_MAX)
+        val current = if (repRestSeconds == REST_UNLIMITED) REP_REST_MIN else repRestSeconds
+        repRestSeconds = (current + delta).coerceIn(REP_REST_MIN, REP_REST_MAX)
     }
 
     suspend fun save(): Boolean {

@@ -285,6 +285,9 @@ private fun ModeBadge(mode: ExerciseModeUi) {
 
 private fun Int?.bpmOrDash(): String = this?.toString() ?: "—"
 
+/** app 側 `REST_UNLIMITED = -1` と同値。companion は app 定数を参照できないためローカル定義。 */
+private const val REST_UNLIMITED = -1
+
 private fun plannedLabel(e: ExerciseDetail): String {
     val per = when {
         e.mode == ExerciseModeUi.REPS -> e.reps?.let { "${it}回" } ?: "上限なし"
@@ -294,8 +297,16 @@ private fun plannedLabel(e: ExerciseDetail): String {
     val head = listOfNotNull(e.sets?.let { "${it}セット" }, per).joinToString(" × ")
     val parts = buildList {
         if (head.isNotBlank()) add(head)
-        e.restSeconds?.takeIf { it > 0 }?.let { add("休憩 ${it}秒") }
-        e.repRestSeconds?.takeIf { it > 0 }?.let { add("レップ間 ${it}秒") }
+        when (e.restSeconds) {
+            REST_UNLIMITED -> add("休憩 無制限")
+            null -> {}
+            else -> if (e.restSeconds > 0) add("休憩 ${e.restSeconds}秒")
+        }
+        when (e.repRestSeconds) {
+            REST_UNLIMITED -> add("レップ間 無制限")
+            null -> {}
+            else -> if (e.repRestSeconds > 0) add("レップ間 ${e.repRestSeconds}秒")
+        }
     }
     return if (parts.isEmpty()) "計画情報なし" else "計画  " + parts.joinToString("  ・  ")
 }

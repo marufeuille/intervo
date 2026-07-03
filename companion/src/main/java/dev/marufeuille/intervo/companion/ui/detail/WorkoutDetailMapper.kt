@@ -7,7 +7,8 @@ import org.json.JSONObject
 /**
  * Wear から受け取ったスナップショット JSON（snake_case）を履歴詳細の表示モデルへ変換する。
  * キー名の真実は app 側 `sync/WorkoutHistorySyncClient.kt`。
- * `-1` は無制限/AMRAP のセンチネルなので null（＝制限なし表記）に落とす。
+ * duration/reps の `-1` は無制限/AMRAP のセンチネルなので null（＝制限なし表記）に落とす。
+ * rest/repRest の `-1` は無制限休憩のセンチネル。UI で「無制限」と表示するためそのまま保持する。
  */
 object WorkoutDetailMapper {
 
