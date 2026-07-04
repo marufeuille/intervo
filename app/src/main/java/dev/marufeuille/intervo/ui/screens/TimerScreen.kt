@@ -62,12 +62,18 @@ fun TimerScreen(
             onTap = {
                 val phase = state.phase
                 val exercisePhase = phase as? TimerPhase.ExercisePhase
+                val isRestLike = phase is TimerPhase.RestPhase || phase is TimerPhase.RepRestPhase
                 if (
                     exercisePhase != null &&
                     state.exercises.getOrNull(exercisePhase.exerciseIndex)?.isDurationUnlimited() == true
                 ) {
+                    // フリーセット（時間無制限）: タップで計測終了ダイアログへ
                     vm.pause()
                     freeSetReview = FreeSetReview(durationSeconds = exercisePhase.remainingSeconds)
+                } else if (isRestLike) {
+                    // 休憩中はタップによるポーズを無効化。
+                    // 休憩スキップ / ±10秒ボタンでポーズが勝手に解除される副作用を防ぐため、
+                    // 休憩の操作系は RestAdjustButtons のみに分離する。
                 } else if (state.isPaused) {
                     vm.resume()
                 } else {

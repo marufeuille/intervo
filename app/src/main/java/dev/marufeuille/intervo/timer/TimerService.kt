@@ -224,13 +224,22 @@ class TimerService : Service() {
     }
 
     private fun applyUserAction(action: (TimerState) -> TimerTransition?) {
+        // ポーズ中にユーザー操作（休憩スキップ / ±10秒 など）が来ても、
+        // 勝手にポーズを解除して時間が進み出さないよう、ポーズ状態を保持する。
+        val wasPaused = _state.value.isPaused
         val transition = action(
             _state.value.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow())
         ) ?: return
         countdownJob?.cancel()
         foldPauseTime()
-        applyTransition(transition)
-        restartCountdownIfActive()
+        // ポーズ中だった場合は phase 遷移だけ適用し、ポーズ状態（isPaused=true）を維持する。
+        // これにより「ポーズ中にスキップを押したら勝手に再開した」体験を防ぐ。
+        val transitionToApply =
+            if (wasPaused) TimerTransition(transition.state.copy(isPaused = true), transition.effects)
+            else transition
+        applyTransition(transitionToApply)
+        // ポーズ中はカウントダウンを再開しない（ユーザーが明示的に resume するまで止めたまま）。
+        if (!wasPaused) restartCountdownIfActive()
     }
 
     private fun applyTransition(transition: TimerTransition) {
