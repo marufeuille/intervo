@@ -49,6 +49,19 @@
 - [実装計画](docs/plan/wear-os-interval-timer.md)
 - [E2E テスト（シナリオベース）](docs/e2e-testing.md)
 
+## 開発
+
+`adb` / `gradlew` / `git` のよく使う操作を、権限プロンプトなしで通す薄ラッパーを `scripts/` に用意している（ホワイトリスト方式。破壊的操作は拒否して生コマンドへ誘導）。AI エージェントも含め、直接 `./gradlew` / `adb` / `git` を叩く前に対応ラッパーを優先する。
+
+| スクリプト | 役割 | 例 |
+|---|---|---|
+| `scripts/g` | gradlew（許可タスクのみ） | `scripts/g assembleDebug` |
+| `scripts/a` | adb（読み系・インストール系のみ） | `scripts/a devices` |
+| `scripts/gitw` | git（PR 作成までの作業系） | `scripts/gitw push -u origin HEAD` |
+| `scripts/watch-adb` | 実機 adb 統合（ビルド+インストール+起動） | `scripts/watch-adb reinstall` |
+
+詳細と守るべきルールは [`CLAUDE.md`](CLAUDE.md) の「開発用コマンドラッパー」節、各スクリプトの `help`（`scripts/g help` 等）を参照。
+
 ## ライセンス
 
 MIT

@@ -38,6 +38,30 @@ CI は **2 層 + リリース前ゲート**で責務を分ける。「ロジッ�
 2. **マージ後は main の E2E を必ず確認する**。落ちたら放置せず、原因を分析して修正 PR を出す（main を常にリリース可能な状態に保つ）。
 3. リリース前に不安があれば、タグを打つ前に `release.yml` を `workflow_dispatch` で実行し、E2E + R8 ビルドが緑であることを事前確認できる（配信はされない）。
 
+## 開発用コマンドラッパー（権限プロンプト省略）
+
+`adb` / `gradlew` / `git` は権限チェックが都度走って開発に支障が出るため、PR 作成までの日常操作だけを**ホワイトリスト方式**で通す薄ラッパーを `scripts/` に置いている。許可エントリは `.claude/settings.local.json` に登録済みで、プロンプトなしで実行できる。
+
+| スクリプト | 役割 | 例 |
+|---|---|---|
+| `scripts/g` | gradlew（許可タスクのみ） | `scripts/g assembleDebug` / `scripts/g :app:testDebugUnitTest` |
+| `scripts/a` | adb（読み系・インストール系のみ） | `scripts/a devices` / `scripts/a shell ...` / `scripts/a logcat` |
+| `scripts/gitw` | git（PR作成までの作業系） | `scripts/gitw status` / `scripts/gitw add -A` / `scripts/gitw push -u origin HEAD` |
+| `scripts/watch-adb` | 実機向け adb 統合（既存） | `scripts/watch-adb reinstall`（ビルド+インストール+起動） |
+
+**AI エージェントが守るルール:**
+
+1. `adb` / `./gradlew` / `git` を直接叩く前に、対応するラッパーで代用できないか必ず確認する。
+2. ラッパーが拒否した（＝ホワイトリスト外・破壊的操作）場合は、**直接生コマンドを実行してよい**（ask プロンプトが走るのが意図通り）。
+3. 拒否される代表例:
+   - `g`: `clean`, `publish` 系, 未知タスク → `./gradlew clean` を直接
+   - `a`: `uninstall`, `reboot`, `root`, `shell pm uninstall`, `shell am force-stop`, `push` → `adb uninstall ...` を直接
+   - `gitw`: `reset --hard`, `clean`, `merge`（--ff-only 以外）, `tag` 作成, `push --force`, `push origin main` → `git reset --hard` 等を直接（push/merge/rebase は ask 設定が効く）
+
+**設計意図:** 「完全オープン」ではなく、PR を作るところまでの操作は摩擦ゼロ、破壊的操作は従来通り `ask` プロンプトで確認を挟む。`git push` は feature ブランチへの初回 push（`-u origin HEAD`）のみ許可し、`main`/`master` と `--force` 系は生 git に誘導して ask を効かせる。
+
+各ラッパーの冒頭に usage がある: `scripts/g help` / `scripts/a help` / `scripts/gitw help`。
+
 ## タスク管理
 
 開発タスク・バックログは **GitHub Issues** で管理する（ラベル: bug/flaky/test/tech-debt/ci/release/enhancement）。
