@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# scripts/g — gradlew 薄ラッパー（PR作成までの日常タスクのみ権限プロンプトなしで通過）
+#
+# 許可タスクのホワイトリストに載っている引数だけを ./gradlew に渡す。
+# 未許可タスク（clean / publish 系 / 未知タスク）は拒否し、
+# 直接 ./gradlew を実行するよう案内する（その場合は ask プロンプトが走る）。
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+GRADLEW="$ROOT_DIR/gradlew"
+
+die() { echo "g: $*" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/g <task> [args...]
+
+gradlew ラッパー。以下のタスクは権限プロンプトなしで実行できます:
+
+  assembleDebug                                  :app デバッグ APK ビルド
+  bundleRelease                                  リリース AAB ビルド
+  lintDebug / lint                               Lint
+  :app:testDebugUnitTest                         ユニットテスト
+  :app:assembleDebug / :app:lintDebug            :app 個別タスク
+  :app:connectedDebugAndroidTest                 :app E2E（エミュレータ）
+  :companion:connectedDebugAndroidTest           :companion E2E
+  :app:installDebug / :companion:installDebug / installDebug
+  :app:dependencies [--configuration ...]        依存関係ツリー
+  dependencies                                   依存関係ツリー（全体）
+
+許可されるフラグ: --info, --stacktrace, --debug, -x <task>, --quiet, -q
+
+未許可タスク（clean, publish 系など）は直接 ./gradlew を実行してください
+（権限プロンプトが出ます）。
+
+例:
+  scripts/g assembleDebug
+  scripts/g :app:testDebugUnitTest --info
+  scripts/g :app:connectedDebugAndroidTest
+EOF
+}
+
+# 許可されるタスク名（完全一致）
+ALLOWED_TASKS=(
+  assembleDebug
+  bundleRelease
+  lintDebug
+  lint
+  installDebug
+  dependencies
+  ":app:assembleDebug"
+  ":app:lintDebug"
+  ":app:testDebugUnitTest"
+  ":app:connectedDebugAndroidTest"
+  ":app:installDebug"
+  ":app:dependencies"
+  ":companion:connectedDebugAndroidTest"
+  ":companion:installDebug"
+)
+
+# 許可されるフラグ/オプション（これらはどのタスクとも併用可）
+ALLOWED_OPTS=(
+  --info
+  --stacktrace
+  --debug
+  --quiet
+  -q
+  -x
+  --configuration
+  --offline
+  --daemon
+  --no-daemon
+  --refresh-dependencies
+)
+
+# 引数が許可リスト内かチェック。タスクは「引数列のどこかに1つ以上」必要。
+# 戻り値: 0=許可, 1=拒否
+is_allowed() {
+  local arg="$1"
+  for t in "${ALLOWED_TASKS[@]}"; do
+    [[ "$arg" == "$t" ]] && return 0
+  done
+  for o in "${ALLOWED_OPTS[@]}"; do
+    [[ "$arg" == "$o" ]] && return 0
+  done
+  # --configuration や -x の直後の値（任意の文字列）は許可
+  return 1
+}
+
+# JAVA_HOME を Android Studio JRE → /usr/libexec/java_home の順で解決
+resolve_java_home() {
+  local candidates=(
+    "/Applications/Android Studio.app/Contents/jre/Contents/Home"
+    "/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+  )
+  for c in "${candidates[@]}"; do
+    if [[ -x "$c/bin/java" ]]; then
+      echo "$c"
+      return
+    fi
+  done
+  # システム Java
+  if [[ -x /usr/libexec/java_home ]]; then
+    /usr/libexec/java_home 2>/dev/null && return
+  fi
+  # JAVA_HOME が既に設定されていればそれを使う（空でなければ）
+  if [[ -n "${JAVA_HOME:-}" ]]; then
+    echo "$JAVA_HOME"
+    return
+  fi
+  return 0  # 見つからなければ空（gradlew に任せる）
+}
+
+main() {
+  [[ -x "$GRADLEW" ]] || die "gradlew not found at $GRADLEW"
+
+  local args=("$@")
+  [[ ${#args[@]} -gt 0 ]] || { usage; die "task required"; }
+
+  # help 系
+  case "${args[0]}" in
+    ""|help|-h|--help) usage; exit 0 ;;
+  esac
+
+  # 全引数を検証。-x / --configuration / --exclude-task の直後の値は任意文字列を許可
+  local found_task=0
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    local arg="${args[$i]}"
+    if is_allowed "$arg"; then
+      # タスク判定（オプションでない）
+      for t in "${ALLOWED_TASKS[@]}"; do
+        [[ "$arg" == "$t" ]] && found_task=1
+      done
+      # 値を取るオプションの次の引数は何でも許可（スキップ）
+      case "$arg" in
+        -x|--configuration|--exclude-task|--tests|--tests-filter)
+          i=$((i+2))
+          continue
+          ;;
+      esac
+    else
+      cat >&2 <<EOF
+g: 拒否 — 未許可の引数: '$arg'
+
+許可タスク/オプション以外は直接 ./gradlew を実行してください（権限プロンプトが出ます）:
+  ./gradlew ${args[*]}
+EOF
+      exit 1
+    fi
+    i=$((i+1))
+  done
+
+  [[ $found_task -eq 1 ]] || die "タスクが指定されていません（オプションのみです）。usage は 'scripts/g help'。"
+
+  # JAVA_HOME 解決
+  local jh
+  jh="$(resolve_java_home || true)"
+  if [[ -n "$jh" ]]; then
+    export JAVA_HOME="$jh"
+  fi
+
+  exec "$GRADLEW" -p "$ROOT_DIR" "${args[@]}"
+}
+
+main "$@"

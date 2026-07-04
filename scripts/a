@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# scripts/a — adb ラッパー（読み系・インストール系のみ権限プロンプトなしで通過）
+#
+# 許可サブコマンドを adb に転送する。破壊的操作（uninstall, reboot, root,
+# remount, wipe, shell 内の破壊系）は拒否し、直接 adb を実行するよう案内する。
+set -euo pipefail
+
+ADB_BIN="${ADB:-adb}"
+
+die() { echo "a: $*" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/a <adb-subcommand> [args...]
+
+adb ラッパー。以下の操作は権限プロンプトなしで実行できます:
+
+  devices [-l]                              接続中デバイス一覧
+  connect <ip:port>                         Wi-Fi 接続
+  wait-for-device                           デバイス待ち
+  get-state / get-serialno                  状態取得
+  install [-r] <apk>                        APK インストール
+  install-multiple [-r] <apk>...            複数 APK
+  shell <cmd>                               shell コマンド（破壊系は拒否）
+  logcat [...]                              ログ
+  mdns services                             mDNS サービス一覧
+  bugreport                                 バグレポート
+  forward / reverse                         ポート転送設定
+  pull <remote> [<local>]                   ファイル取得
+  shell dumpsys <...>                       システム状態（読み系）
+
+拒否される操作（直接 adb を実行してください = 権限プロンプトが出ます）:
+  uninstall, reboot, root, remount, reboot-bootloader, wipe,
+  shell pm uninstall/clear, shell am force-stop, shell input,
+  push（書込み）
+
+例:
+  scripts/a devices -l
+  scripts/a shell monkey -p dev.marufeuille.intervo.debug 1
+  scripts/a logcat -d | tail -50
+
+※ デバイスのペアリング・ビルド付きインストールは scripts/watch-adb を使ってください。
+EOF
+}
+
+# 引数列（"$*" で連結）全体を文字列として受け取り、破壊パターンを検索
+# 戻り値: 0=拒否対象, 1=安全
+is_destructive() {
+  local joined="$*"
+  # 完全一致の破壊サブコマンド
+  case "$1" in
+    uninstall|reboot|root|remount|reboot-bootloader|wipe|unroot|emu|usb) return 0 ;;
+  esac
+  # shell 配下の破壊パターン（第2引数以降で判定）
+  if [[ "$1" == "shell" ]]; then
+    local shell_cmd="${2:-}"
+    case "$shell_cmd" in
+      pm)
+        local action="${3:-}"
+        case "$action" in
+          uninstall|clear|grant|revoke|reset) return 0 ;;
+        esac
+        ;;
+      am)
+        local action="${3:-}"
+        case "$action" in
+          force-stop|kill|clear-debug-app) return 0 ;;
+        esac
+        ;;
+      reboot) return 0 ;;
+      input) return 0 ;;  # UI 操作（タップ等）は制御対象外として拒否
+      stop|start) return 0 ;;  # システムサービス停止/起動
+      settings)
+        # settings put/get/secure 等は一部書込み。保守的に put を拒否
+        local action="${3:-}"
+        case "$action" in put) return 0 ;; esac
+        ;;
+    esac
+  fi
+  # push は書込み
+  if [[ "$1" == "push" ]]; then
+    return 0
+  fi
+  # --uninstall オプション付き install-multiple
+  if [[ "$joined" == *"--uninstall"* ]]; then
+    return 0
+  fi
+  return 1
+}
+
+# 許可されるサブコマンドのホワイトリスト
+# 戻り値: 0=許可, 1=拒否（未許可サブコマンド）
+is_allowed_subcommand() {
+  local sub="$1"
+  case "$sub" in
+    devices|connect|wait-for-device|wait-for-usb|wait-for-tcp|get-state|get-serialno|\
+    install|install-multiple|install-multiple-recovery|shell|logcat|mdns|bugreport|\
+    forward|reverse|jdwp|pull|start-server|kill-server|version|help|\
+    reconnect|stat|ls|keygen|features|sync|remount?) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+main() {
+  command -v "$ADB_BIN" >/dev/null 2>&1 || die "adb not found. Android SDK platform-tools を PATH へ。"
+
+  [[ $# -gt 0 ]] || { usage; die "subcommand required"; }
+
+  # help 系
+  case "${1:-}" in
+    ""|help|-h|--help) usage; exit 0 ;;
+  esac
+
+  local sub="$1"; shift || true
+
+  # サブコマンド許可チェック
+  if ! is_allowed_subcommand "$sub"; then
+    cat >&2 <<EOF
+a: 拒否 — 未許可のサブコマンド: '$sub'
+
+直接 adb を実行してください（権限プロンプトが出ます）:
+  adb $sub $*
+EOF
+    exit 1
+  fi
+
+  # 破壊的操作チェック（sub + 残り引数で判定）
+  if is_destructive "$sub" "$@"; then
+    cat >&2 <<EOF
+a: 拒否 — 破壊的操作と判定しました。
+
+直接 adb を実行してください（権限プロンプトで確認が走ります）:
+  adb $sub $*
+EOF
+    exit 1
+  fi
+
+  exec "$ADB_BIN" "$sub" "$@"
+}
+
+main "$@"

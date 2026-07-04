@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+# scripts/gitw — git ラッパー（PR作成までの作業系のみ権限プロンプトなしで通過）
+#
+# ホワイトリスト方式: 読み系・作業系サブコマンドを git に転送する。
+# 破壊的操作（reset --hard, clean -fd, merge/rebase 無条件, --force push,
+# main/master への push, tag 作成等）は拒否し、直接 git を実行するよう案内する。
+# 直接 git を叩けば ~/.claude/settings.json の ask 設定が効く。
+set -euo pipefail
+
+die() { echo "gitw: $*" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/gitw <git-subcommand> [args...]
+
+git ラッパー。PR 作成までの日常操作は権限プロンプトなしで実行できます:
+
+【読み系】
+  status, diff, log, show, branch, branch -a, remote -v, ls-files,
+  describe, shortlog, blame, name-rev, rev-parse, config --get <key>,
+  tag -l (一覧のみ)
+
+【作業系】
+  add <paths>, commit [...], checkout [-b] <branch>, switch [-c] <branch>,
+  restore <paths>, stash [push/pop/apply], fetch [remote], pull [--ff-only],
+  merge --ff-only <ref>, rebase -i HEAD~<n>
+
+【push（feature ブランチのみ許可）】
+  push -u origin <current-branch>
+  push origin <current-branch>
+  → main/master への push と --force 系は拒否（直接 git push を = ask が走る）
+
+拒否される操作（直接 git を実行してください = ask プロンプトが走ります）:
+  reset --hard, clean -fd, merge (--ff-only 以外), rebase (対話以外),
+  cherry-pick, tag 作成（リリースタグは直接 git tag を）, gc,
+  filter-branch, update-ref, push --force*, push origin main|master
+
+例:
+  scripts/gitw status
+  scripts/gitw add -A && scripts/gitw commit -m "..."
+  scripts/gitw push -u origin HEAD
+EOF
+}
+
+# 現在のブランチ名を取得
+current_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || true
+}
+
+# 現在のブランチが保護対象（main/master）か
+is_protected_branch() {
+  local br
+  br="$(current_branch || true)"
+  case "$br" in
+    main|master) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# push の妥当性を検証。許可なら 0、拒否なら 1
+# 使い方: validate_push "$@" （push サブコマンド以降の引数）
+validate_push() {
+  local args=("$@")
+  local joined="${args[*]}"
+
+  # force 系は問答無用で拒否
+  if [[ "$joined" == *"--force"* || "$joined" == *"--force-with-lease"* || "$joined" == *"-f "* || "$joined" == *" + "* ]]; then
+    echo "gitw: 拒否 — force push は直接 git を実行してください（ask が走ります）" >&2
+    return 1
+  fi
+
+  # 保存先ブランチを推定: push [-u] <remote> <refspec> または push <remote>
+  local remote="" refspec=""
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    local a="${args[$i]}"
+    case "$a" in
+      -u|--set-upstream) i=$((i+1)); continue ;;
+      --*) i=$((i+1)); continue ;;
+      *)
+        if [[ -z "$remote" ]]; then
+          remote="$a"
+        elif [[ -z "$refspec" ]]; then
+          refspec="$a"
+        fi
+        ;;
+    esac
+    i=$((i+1))
+  done
+
+  # refspec からブランチ名を取り出す（HEAD の場合は現在ブランチ）
+  local target_branch
+  if [[ -z "$refspec" || "$refspec" == "HEAD" ]]; then
+    target_branch="$(current_branch || true)"
+  else
+    # refs/heads/x や x:x, x の左辺を取得
+    target_branch="${refspec%%:*}"
+    target_branch="${target_branch#refs/heads/}"
+  fi
+
+  case "$target_branch" in
+    main|master)
+      echo "gitw: 拒否 — main/master への push は直接 git を実行してください（ask が走ります）" >&2
+      return 1
+      ;;
+  esac
+
+  # 現在ブランチが保護対象なら念のため拒否
+  if is_protected_branch; then
+    echo "gitw: 拒否 — 現在 main/master にいるため push は直接 git を実行してください（ask が走ります）" >&2
+    return 1
+  fi
+
+  return 0
+}
+
+main() {
+  [[ $# -gt 0 ]] || { usage; die "subcommand required"; }
+
+  local sub="$1"; shift || true
+
+  # help 系
+  case "$sub" in
+    ""|help|-h|--help) usage; exit 0 ;;
+  esac
+
+  # サブコマンドごとの許可判定
+  case "$sub" in
+    # ===== 読み系（自由に通す）=====
+    status|diff|log|show|ls-files|describe|shortlog|blame|name-rev|reflog|\
+    ls-remote|cat-file|rev-list|for-each-ref|symbolic-ref|annotate)
+      exec git "$sub" "$@"
+      ;;
+
+    branch)
+      # branch -d/-D（削除）以外は通す。削除は保守的に拒否
+      if [[ "${1:-}" == "-d" || "${1:-}" == "-D" || "${1:-}" == "--delete" ]]; then
+        echo "gitw: 拒否 — ブランチ削除は直接 git を実行してください（ask が走ります）" >&2
+        exit 1
+      fi
+      exec git "$sub" "$@"
+      ;;
+
+    remote)
+      # remote -v / remote は通す。add/remove/rename は拒否
+      case "${1:-}" in
+        ""|-v|show) exec git "$sub" "$@" ;;
+        *) echo "gitw: 拒否 — remote 変更系は直接 git を実行してください（ask が走ります）" >&2; exit 1 ;;
+      esac
+      ;;
+
+    tag)
+      # tag -l / tag --list（一覧）のみ通す。作成は拒否（リリースタグは直接 git tag を）
+      case "${1:-}" in
+        -l|--list) exec git "$sub" "$@" ;;
+        *) echo "gitw: 拒否 — tag 作成は直接 git tag を実行してください（リリースフロー）" >&2; exit 1 ;;
+      esac
+      ;;
+
+    config)
+      # config --get / --list のみ通す。設定変更は拒否
+      case "${1:-}" in
+        --get|--list|--get-all) exec git "$sub" "$@" ;;
+        *) echo "gitw: 拒否 — config 変更系は直接 git を実行してください" >&2; exit 1 ;;
+      esac
+      ;;
+
+    rev-parse)
+      exec git "$sub" "$@"
+      ;;
+
+    # ===== 作業系（PRまでの日常）=====
+    add|commit|checkout|switch|restore)
+      exec git "$sub" "$@"
+      ;;
+
+    stash)
+      # stash の大半は通す（push/pop/apply/list/drop）。clear は保守的に拒否
+      if [[ "${1:-}" == "clear" ]]; then
+        echo "gitw: 拒否 — stash clear は直接 git を実行してください" >&2
+        exit 1
+      fi
+      exec git "$sub" "$@"
+      ;;
+
+    fetch)
+      exec git "$sub" "$@"
+      ;;
+
+    pull)
+      # pull は fetch+merge だが、基本通す（--rebase 付きでも可）
+      exec git "$sub" "$@"
+      ;;
+
+    merge)
+      # merge --ff-only のみ通す
+      if [[ "${1:-}" == "--ff-only" ]]; then
+        exec git "$sub" "$@"
+      fi
+      echo "gitw: 拒否 — merge (--ff-only 以外) は直接 git を実行してください（ask が走ります）" >&2
+      exit 1
+      ;;
+
+    rebase)
+      # rebase -i HEAD~<n> のみ通す（対話的）。その他は拒否
+      if [[ "${1:-}" == "-i" || "${1:-}" == "--interactive" ]]; then
+        exec git "$sub" "$@"
+      fi
+      echo "gitw: 拒否 — rebase (対話以外) は直接 git を実行してください（ask が走ります）" >&2
+      exit 1
+      ;;
+
+    push)
+      if validate_push "$@"; then
+        exec git "$sub" "$@"
+      fi
+      exit 1
+      ;;
+
+    # ===== 明示拒否（破壊的・リリース系）=====
+    reset|clean|cherry-pick|revert|gc|filter-branch|update-ref|\
+    submodule|worktree|bisect|mv|am|format-patch|archive)
+      echo "gitw: 拒否 — '$sub' は直接 git を実行してください（ask プロンプトが走ります）" >&2
+      exit 1
+      ;;
+
+    *)
+      echo "gitw: 拒否 — 未知または未許可のサブコマンド: '$sub'" >&2
+      echo "      直接 git $sub $* を実行してください（ask プロンプトが走ります）" >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
