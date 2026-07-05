@@ -50,8 +50,6 @@ class TimerService : Service() {
     private var lastPersistedKey: String? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtElapsedMillis: Long = 0L
-    private var pausedAtElapsedMillis: Long = 0L
-    private var totalPausedMillis: Long = 0L
 
     var activeWorkoutId: String? = null
         private set
@@ -120,8 +118,6 @@ class TimerService : Service() {
             acquireWakeLock()
             startHeartRate()
             startedAtElapsedMillis = SystemClock.elapsedRealtime()
-            pausedAtElapsedMillis = 0L
-            totalPausedMillis = 0L
             applyTransition(transition)
             startCountdown()
         }
@@ -139,8 +135,6 @@ class TimerService : Service() {
         acquireWakeLock()
         startHeartRate()
         startedAtElapsedMillis = SystemClock.elapsedRealtime() - snapshot.state.elapsedSeconds * 1000L
-        pausedAtElapsedMillis = 0L
-        totalPausedMillis = 0L
         _state.value = snapshot.state
         startCountdown()
     }
@@ -185,12 +179,10 @@ class TimerService : Service() {
         if (_state.value.isPaused) return
         countdownJob?.cancel()
         _state.value = _state.value.copy(isPaused = true, elapsedSeconds = elapsedSecondsNow())
-        pausedAtElapsedMillis = SystemClock.elapsedRealtime()
     }
 
     fun resume() {
         if (!_state.value.isPaused) return
-        foldPauseTime()
         _state.value = _state.value.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow())
         startCountdown()
     }
@@ -212,8 +204,6 @@ class TimerService : Service() {
         stopHeartRate()
         releaseWakeLock()
         startedAtElapsedMillis = 0L
-        pausedAtElapsedMillis = 0L
-        totalPausedMillis = 0L
         activeWorkoutId = null
         _runningWorkoutId.value = null
         lastPersistedKey = null
@@ -228,7 +218,6 @@ class TimerService : Service() {
             _state.value.copy(isPaused = false, elapsedSeconds = elapsedSecondsNow())
         ) ?: return
         countdownJob?.cancel()
-        foldPauseTime()
         applyTransition(transition)
         restartCountdownIfActive()
     }
@@ -355,13 +344,6 @@ class TimerService : Service() {
         }
     }
 
-    private fun foldPauseTime() {
-        if (pausedAtElapsedMillis > 0L) {
-            totalPausedMillis += SystemClock.elapsedRealtime() - pausedAtElapsedMillis
-            pausedAtElapsedMillis = 0L
-        }
-    }
-
     private fun releaseWakeLock() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
@@ -390,17 +372,11 @@ class TimerService : Service() {
         }
     }
 
+    // ポーズ中も含めた開始〜現在の実経過を返す（ポーズ時間もワークアウト記録に算入する）
     private fun elapsedSecondsNow(): Int {
         if (startedAtElapsedMillis == 0L) return 0
         val now = SystemClock.elapsedRealtime()
-        val currentPauseMillis = if (_state.value.isPaused && pausedAtElapsedMillis > 0L) {
-            now - pausedAtElapsedMillis
-        } else {
-            0L
-        }
-        return ((now - startedAtElapsedMillis - totalPausedMillis - currentPauseMillis) / 1000L)
-            .toInt()
-            .coerceAtLeast(0)
+        return ((now - startedAtElapsedMillis) / 1000L).toInt().coerceAtLeast(0)
     }
 
     companion object {
