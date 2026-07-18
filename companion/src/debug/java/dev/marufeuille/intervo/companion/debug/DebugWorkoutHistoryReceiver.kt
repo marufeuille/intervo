@@ -14,7 +14,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Debug ビルド専用: ADB からダミー履歴を投入し、PDS 直接同期まで走らせる。
+ * Debug ビルド専用: ADB からダミー履歴を投入する。
  *
  * adb shell am broadcast \
  *   -n dev.marufeuille.intervo.debug/dev.marufeuille.intervo.companion.debug.DebugWorkoutHistoryReceiver \
@@ -34,19 +34,9 @@ class DebugWorkoutHistoryReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             runCatching {
                 val repository = app.container.repository
-                val pdsUrl = intent.getStringExtra(EXTRA_PDS_URL)
-                val identifier = intent.getStringExtra(EXTRA_IDENTIFIER)
-                val appPassword = intent.getStringExtra(EXTRA_APP_PASSWORD)
-                if (!pdsUrl.isNullOrBlank() && !identifier.isNullOrBlank() && !appPassword.isNullOrBlank()) {
-                    repository.savePdsSettings(
-                        serviceUrl = pdsUrl,
-                        identifier = identifier,
-                        appPassword = appPassword,
-                    )
-                }
                 repository.receive(sampleHistory(sourceRef))
-                val synced = if (shouldSync) repository.writePendingPds() else 0
-                Log.i(TAG, "Seeded sourceRef=$sourceRef pdsSynced=$synced sync=$shouldSync")
+                if (shouldSync) repository.scheduleSync()
+                Log.i(TAG, "Seeded sourceRef=$sourceRef sync=$shouldSync")
             }.onFailure { error ->
                 Log.e(TAG, "Failed to seed debug workout history", error)
             }
@@ -182,8 +172,5 @@ class DebugWorkoutHistoryReceiver : BroadcastReceiver() {
         private const val TAG = "DebugWorkoutHistory"
         private const val EXTRA_SOURCE_REF = "sourceRef"
         private const val EXTRA_SYNC = "sync"
-        private const val EXTRA_PDS_URL = "pdsUrl"
-        private const val EXTRA_IDENTIFIER = "identifier"
-        private const val EXTRA_APP_PASSWORD = "appPassword"
     }
 }

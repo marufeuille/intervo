@@ -21,5 +21,4 @@ data class CompanionWorkoutHistory(
     val performedSetsJson: String = "[]",
     val receivedAt: Long = System.currentTimeMillis(),
     val healthConnectWrittenAt: Long? = null,
-    val pdsSyncedAt: Long? = null,
 )

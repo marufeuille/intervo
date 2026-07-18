@@ -14,7 +14,7 @@ import dev.marufeuille.intervo.companion.CompanionApplication
 import java.util.concurrent.TimeUnit
 
 /**
- * 未同期の履歴を Health Connect / PDS へ流す WorkManager ジョブ。
+ * 未同期の履歴を Health Connect へ流す WorkManager ジョブ。
  *
  * ウォッチからの受信は [dev.marufeuille.intervo.companion.wear.WorkoutHistoryListenerService] の
  * 短命なサービス内で起きるため、その場でネットワーク同期まで走らせると完走前にサービスが破棄され
@@ -25,11 +25,11 @@ class SyncWorker(appContext: Context, params: WorkerParameters) :
 
     override suspend fun doWork(): Result {
         val repository = (applicationContext as CompanionApplication).container.repository
-        val needsRetry = runCatching { repository.syncPending() }.getOrElse {
+        runCatching { repository.syncPending() }.getOrElse {
             // 予期せぬ例外は一時的失敗とみなして再試行に回す。
             return Result.retry()
         }
-        return if (needsRetry) Result.retry() else Result.success()
+        return Result.success()
     }
 
     companion object {

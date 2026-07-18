@@ -110,8 +110,8 @@ CI では `ci.yml` の `instrumented-test-companion` ジョブ（main push の�
 | シナリオ | 操作 | 検証内容 |
 | --- | --- | --- |
 | 履歴がないときは空状態が表示される | 起動直後（History タブ初期表示） | 「まだ履歴がありません」 |
-| 履歴をシードすると一覧に出て詳細で確認できる | 履歴を DB に直接シード → カードタップ → 詳細 → 戻る | カード名・HC/PDS チップ、詳細の合計時間/セット、戻るで一覧復帰 |
-| PDS設定を入力して保存し削除できる | NavBar「設定」→ 3 フィールド入力 → 保存 → 削除 | 未設定→設定済み chip・App Password（保存済み）→ 削除で未設定に復帰 |
+| 履歴をシードすると一覧に出て詳細で確認できる | 履歴を DB に直接シード → カードタップ → 詳細 → 戻る | カード名・HC チップ、詳細の合計時間/セット、戻るで一覧復帰 |
+| 設定タブでHealthConnectカードが表示される | NavBar「設定」を開く | Health Connect カードの表示 |
 
 > シナリオを追加・変更したら、この表も更新すること。
 
@@ -120,14 +120,12 @@ CI では `ci.yml` の `instrumented-test-companion` ジョブ（main push の�
 - **MainActivity バイパス**: `ComponentActivity` に `CompanionNavHost()` を直接載せる。`companionViewModel`
   が `LocalContext` 経由で `CompanionApplication` を取得するため、空 Activity ホストでも実 Repository（実 DB）が
   そのまま繋がる（Application はプロセス単位で `CompanionApplication` のまま）。
-- **決定性**: `@Before`/`@After` で `CompanionDatabase.clearAllTables()` と
-  `CompanionRepository.clearPdsSettings()`（Keystore + SharedPreferences）を呼ぶ。PDS 設定ジャーニーは
-  ローカル保存のみで通信しない。
+- **決定性**: `@Before` で `CompanionDatabase.clearAllTables()` を呼ぶ。
 - **NavBar のタブ絞り込み（重要）**: タブ label（履歴/プラン/設定）は各画面の TopAppBar タイトルと同名で
   `onNodeWithText` が複数ヒットする。NavigationBarItem はクリック可能だが TopAppBar の title Text は
   クリック不可なので、`onAllNodes(hasText(label) and hasClickAction())[0]` で NavBar 側を絞り込む。
-- **スコープ外（Phase 2）**: Health Connect / PDS の実際の通信は `CompanionRepository` が `by lazy` で
+- **スコープ外（Phase 2）**: Health Connect の実際の通信は `CompanionRepository` が `by lazy` で
   直 new しており差し替え不可。HC はエミュレータで利用不可（`isAvailable=false` で「連携する」disabled）。
-  これらのジャーニーは Repository に差し替えフックを入れるか MockWebServer で擬製して別 PR で扱う。
+  このジャーニーは Repository に差し替えフックを入れるか擬製して別 PR で扱う。
 - **プラン一覧画面**: 本 PR 時点では main に Plans タブ / `PlanListScreen` が未マージのため対象外。
   当該機能（別 PR）がマージされた後に「プラン空状態」シナリオを追加する。

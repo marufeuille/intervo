@@ -27,7 +27,6 @@ data class WorkoutDetailUiModel(
     val avgHr: Int?,
     val maxHr: Int?,
     val healthConnectWritten: Boolean,
-    val pdsSynced: Boolean,
     val exercises: List<ExerciseDetail>,
 ) {
     val hasHeartRate: Boolean get() = startHr != null || avgHr != null || maxHr != null
