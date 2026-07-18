@@ -52,7 +52,7 @@ class WorkoutHistoryListenerService : WearableListenerService() {
                 runCatching { Wearable.getDataClient(applicationContext).deleteDataItems(uri) }
             }
         }
-        // ネットワーク同期（Health Connect / PDS）はサービス破棄に巻き込まれないよう WorkManager へ委譲する。
+        // Health Connect への同期はサービス破棄に巻き込まれないよう WorkManager へ委譲する。
         repository.scheduleSync()
     }
 

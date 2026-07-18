@@ -25,26 +25,9 @@ Debug と Release は別アプリとしてウォッチに共存できる。
 ./gradlew assembleDebug
 ```
 
-### Companion の PDS 直接同期（任意）
+### Emulator でダミー履歴を投入する
 
-`companion` は標準 PDS の XRPC に直接書き込む。設定画面で以下を保存すると、受信済み履歴を
-`dev.marufeuille.workout.plan` / `dev.marufeuille.workout.checkin` record として
-`com.atproto.repo.putRecord` する。
-PDS へ送る record は、再利用できるワークアウトプラン定義と、そのプランを実行したという軽い
-チェックイン要約に分ける。心拍数データは含めず、Health Connect 側にのみ書き込む。
-設定画面や履歴画面の再同期は同じ rkey で全履歴を再 `putRecord` し、PDS 上の既存 plan/checkin record を
-現在の payload で上書きする。checkin は直前に書き込んだ plan の `uri` / `cid` を参照する。
-
-- PDS URL: `https://pds.example.com` など
-- ハンドル: `you.example.com` など
-- App Password: Bluesky/PDS 側で発行した App Password
-
-App Password は Android Keystore の鍵で暗号化して端末内に保存する。将来 OAuth 化する場合は、この
-App Password 認証部分を OAuth token provider に置き換える。
-
-### Emulator で実 PDS 書き込みを確認する
-
-設定画面で PDS 設定を保存してから、Debug 専用 receiver でダミー履歴を投入できる。
+Debug 専用 receiver でダミー履歴を投入できる。
 ダミー履歴には完了セット、実レップが少ない未完了セット、時間セットの途中終了例を含めている。
 
 ```bash
@@ -56,20 +39,8 @@ adb shell am broadcast \
   --es sourceRef emulator-test-001
 ```
 
-ADB だけで一度に設定と送信を行う場合は、Debug 専用 extra を使える（App Password はログに出さない）。
-
-```bash
-adb shell am broadcast \
-  -n dev.marufeuille.intervo.debug/dev.marufeuille.intervo.companion.debug.DebugWorkoutHistoryReceiver \
-  -a dev.marufeuille.intervo.DEBUG_SEED_WORKOUT_HISTORY \
-  --es sourceRef emulator-test-001 \
-  --es pdsUrl https://pds.example.com \
-  --es identifier you.example.com \
-  --es appPassword '<APP_PASSWORD>'
-```
-
-同じ `sourceRef` で再実行すると、PDS では同一 rkey へのべき等 upsert になる。Room へ入れるだけで
-同期しない場合は `--ez sync false` を付ける。
+同じ `sourceRef` で再実行しても Room へは重複投入されない（IGNORE insert）。Room へ入れるだけで
+同期（Health Connect への書き込み予約）をしない場合は `--ez sync false` を付ける。
 
 ### Wi-Fi ADB で接続・インストール
 

@@ -121,11 +121,6 @@ private fun HistoryCard(history: CompanionWorkoutHistory, onClick: () -> Unit) {
             text = if (hcWritten) "Health Connect 連携済み" else "Health Connect 未連携",
             kind = if (hcWritten) ChipKind.Done else ChipKind.Pending,
         )
-        val pdsSynced = history.pdsSyncedAt != null
-        StatusChip(
-            text = if (pdsSynced) "PDS 同期済み" else "PDS 未同期",
-            kind = if (pdsSynced) ChipKind.Pds else ChipKind.Pending,
-        )
     }
 }
 

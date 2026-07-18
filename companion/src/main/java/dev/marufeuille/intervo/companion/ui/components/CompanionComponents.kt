@@ -16,14 +16,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** ステータスチップの種別。色はテーマ＋固定アンバーから導出（ダークでも破綻しないよう薄い tint）。 */
-enum class ChipKind { Done, Pending, Pds }
+enum class ChipKind { Done, Pending }
 
 @Composable
 fun StatusChip(text: String, kind: ChipKind) {
     val color = when (kind) {
         ChipKind.Done -> MaterialTheme.colorScheme.secondary
         ChipKind.Pending -> Color(0xFFB45309)
-        ChipKind.Pds -> MaterialTheme.colorScheme.primary
     }
     Surface(
         shape = RoundedCornerShape(12.dp),
