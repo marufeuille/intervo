@@ -65,3 +65,12 @@ CI は **2 層 + リリース前ゲート**で責務を分ける。「ロジッ�
 ## タスク管理
 
 開発タスク・バックログは **GitHub Issues** で管理する（ラベル: bug/flaky/test/tech-debt/ci/release/enhancement）。
+
+## Cursor Cloud specific instructions
+
+Cloud VM は起動時に update script（JDK 17 + Android SDK のセットアップ）が実行済みで、`~/.bashrc` に `JAVA_HOME`（JDK 17）と `ANDROID_HOME`（`~/Android/Sdk`）が export される。**非対話 shell（`Shell` ツールの単発コマンド）では `~/.bashrc` が読まれない**ため、Gradle/adb を直接叩くコマンドの先頭で毎回 `export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=$HOME/Android/Sdk` を明示するか、`scripts/g`（JAVA_HOME を自前解決する）経由で実行すること。**JDK 21 が system default なので JAVA_HOME を渡さないと AGP が失敗する**。
+
+- 日常の検証（速い層）: `./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest`（CI の `build` ジョブと同じ）。companion は `./gradlew :companion:testDebugUnitTest :companion:assembleDebug`。標準タスク一覧は本ファイル上部と `docs/build.md` を参照。
+- `local.properties`（`sdk.dir`）は gitignore 対象。update script 側では作らないので、無ければ `echo "sdk.dir=$ANDROID_HOME" > local.properties` を作る（未作成でも `ANDROID_HOME` が効いていればビルドは通る）。
+- **Wear OS / phone エミュレータ（`connectedDebugAndroidTest` 等の instrumented / E2E）はこの Cloud VM では実用にならない**。`/dev/kvm` が無く（ネスト仮想化が露出していない）、エミュレータが純ソフトウェア（QEMU TCG）で動くため極端に遅い。ブートは完了しアプリの起動・画面遷移までは確認できるが、`system_server` が高頻度で ANR/一時停止し、Gradle の APK 再インストール工程が `Can't find service: package` で失敗する。instrumented テストの検証は CI（GitHub Actions の `instrumented-test` / `release.yml` の `e2e`、KVM 有効）に委ねる。手元では unit テスト＋`assembleDebug`＋`lintDebug` で担保する。
+- GUI 目視が必要なときはエミュレータを headless（`-no-window -gpu swiftshader_indirect -accel off`）で起動し、`adb exec-out screencap -p` でスクショを取る（computer use は headless エミュレータを映せない）。起動直後は Wear のセットアップウィザードが前面に出るので `settings put secure user_setup_complete 1` / `settings put global device_provisioned 1` を設定し、権限は `pm grant` で付与しておくと良い。
