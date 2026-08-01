@@ -4,8 +4,8 @@ kotlin = "2.2.21"
 ksp = "2.2.21-2.0.5"
 coroutines = "1.11.0"
 serializationJson = "1.8.1"
-lifecycleRuntime = "2.10.0"
-composeBom = "2026.05.01"
+lifecycleRuntime = "2.11.0"
+composeBom = "2026.06.01"
 # material-icons-core は compose BOM 管理外。オフラインで確実に解決できるキャッシュ済み版に固定。
 composeIcons = "1.7.8"
 # Wear OS 6 (API36) で wearCompose 1.5+ の predictive back 統合により
