@@ -25,14 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@v6.2.0
 
       # companion は google-services.json（非コミット）が必要なため、CI では :app のみ対象
       - name: Build, lint and run unit tests
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-java@v5
         with:
@@ -65,7 +65,7 @@ jobs:
           java-version: "17"
 
       # Gradle キャッシュの書き込みは build ジョブに任せ、ここは read-only（保存処理の時間を節約）
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@v6.2.0
         with:
           cache-read-only: true
 
@@ -78,7 +78,7 @@ jobs:
 
       # AVD（とブート済みスナップショット）をキャッシュして 2 回目以降の起動を高速化
       - name: AVD cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: avd-cache
         with:
           path: |
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-java@v5
         with:
@@ -162,7 +162,7 @@ jobs:
           java-version: "17"
 
       # Gradle キャッシュの書き込みは build ジョブに任せ、ここは read-only
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@v6.2.0
         with:
           cache-read-only: true
 
@@ -175,7 +175,7 @@ jobs:
 
       # phone エミュレータの AVD（とブート済みスナップショット）をキャッシュ。Wear のキーと衝突させない。
       - name: AVD cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: avd-cache-companion
         with:
           path: |
